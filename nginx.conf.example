@@ -1,0 +1,35 @@
+# Ejemplo de reverse proxy para ATV (ajustar dominio y puertos).
+#
+# IMPORTANTE — rutas al backend FastAPI:
+#   /api/    → API REST (prefijo que usa el frontend en NEXT_PUBLIC_BACKEND_URL)
+#   /media/  → archivos estáticos (logos, stories). El backend monta StaticFiles en /media.
+#              resolveMediaUrl() en el frontend construye URLs como /media/logo/...
+#              NO van bajo /api/media; si falta este location, los logos no cargan en producción.
+#
+#   /        → Next.js (frontend)
+
+server {
+    listen 80;
+    server_name ejemplo.com;
+
+    # Assets estáticos del backend (logos, imágenes de stories, etc.)
+    location /media/ {
+        proxy_pass http://127.0.0.1:8001/media/;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+    }
+
+    # API FastAPI
+    location /api/ {
+        proxy_pass http://127.0.0.1:8001/api/;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+    }
+
+    # Frontend Next.js
+    location / {
+        proxy_pass http://127.0.0.1:3001;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+    }
+}
