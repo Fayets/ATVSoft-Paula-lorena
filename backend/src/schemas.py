@@ -475,6 +475,8 @@ class LeadOut(BaseModel):
     dolores_llamada: str | None = None
     razon_compra: str | None = None
     objetivo: str | None = None
+    situacion_actual: str | None = None
+    reto_actual: str | None = None
     dias_agendamiento: int | None = Field(
         default=None,
         description="Días desde 1er contacto hasta completar formulario Calendly (primer_contacto → agendo).",
@@ -548,6 +550,10 @@ class LeadPatchRequest(BaseModel):
     dolores_llamada: str | None = None
     closer_report: str | None = None
     razon_compra: str | None = None
+    objetivo: str | None = None
+    situacion_actual: str | None = None
+    reto_actual: str | None = None
+    ingresos_rango: str | None = None
     setter: str | None = None
     closer: str | None = None
 
@@ -637,10 +643,14 @@ class KeywordsListResponse(BaseModel):
 class SyncSettingsOut(BaseModel):
     stories_interval_minutes: int
     reels_interval_minutes: int
+    calendly_interval_minutes: int = 360
     stories_next_sync: str | None = None
     reels_next_sync: str | None = None
+    calendly_next_sync: str | None = None
     min_interval_minutes: int = 1
     max_interval_minutes: int = 10080
+    min_calendly_interval_minutes: int = 60
+    max_calendly_interval_minutes: int = 10080
 
 
 class SyncSettingsPatch(BaseModel):
@@ -652,3 +662,48 @@ class SyncSettingsPatch(BaseModel):
         default=None,
         description="Minutos entre refresh automático de métricas de reels.",
     )
+    calendly_interval_minutes: int | None = Field(
+        default=None,
+        description="Minutos entre auto-check/sync de Calendly (p. ej. 360=6h, 720=12h).",
+    )
+
+
+class CallReportOut(BaseModel):
+    id: str
+    lead_id: str
+    lead_nombre: str = ""
+    fathom_url: str
+    estado: str
+    error_msg: str | None = None
+    participantes: str | None = None
+    motivo_reunion: str | None = None
+    resumen: str | None = None
+    hubo_objeciones: str | None = None
+    tipo_perfil: str | None = None
+    ingresos_estimados: str | None = None
+    situacion_y_deseo: str | None = None
+    closer_report: str | None = None
+    dolores_llamada: str | None = None
+    razon_compra: str | None = None
+    program_offered: str | None = None
+    status_llamada: str | None = None
+    created_at: str
+    updated_at: str | None = None
+
+
+class CallReportsListResponse(BaseModel):
+    call_reports: list[CallReportOut] = Field(default_factory=list)
+
+
+class CallReportAnalyzeRequest(BaseModel):
+    lead_id: int
+    fathom_url: str
+
+
+class CallReportAnalyzeResponse(BaseModel):
+    report_id: int
+    estado: str
+
+
+class CallReportBulkIdsRequest(BaseModel):
+    ids: list[int] = Field(default_factory=list)

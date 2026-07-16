@@ -10,6 +10,7 @@ const titles: Record<string, string> = {
   '/historias': 'Historias',
   '/youtube': 'YouTube',
   '/leads': 'Leads',
+  '/reporte-calls': 'Reporte calls',
   '/sales-dashboard': 'Ventas',
   '/team': 'Equipo',
   '/bio': 'BIO',

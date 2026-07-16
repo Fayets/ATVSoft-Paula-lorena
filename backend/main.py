@@ -25,6 +25,7 @@ from src.controllers.programs_controller import router as programs_router
 from src.controllers.avatars_controller import router as avatars_router
 from src.controllers.keywords_controller import router as keywords_router
 from src.controllers.leads_controller import router as leads_router
+from src.controllers.call_reports_controller import router as call_reports_router
 from src.controllers.reels_controller import router as reels_router
 from src.controllers.stories_controller import router as stories_router
 from src.controllers.sync_settings_controller import router as sync_settings_router
@@ -37,14 +38,17 @@ from src.db import db, init_db
 from src.models import ApiConnection
 from src.services.reels_services import ReelsServices
 from src.services.sync_scheduler_service import (
+    CALENDLY_JOB_ID,
     REELS_JOB_ID,
     STORIES_JOB_ID,
     apply_sync_schedules,
     bind_sync_scheduler,
 )
 from src.services.sync_settings_service import (
+    DEFAULT_CALENDLY_INTERVAL_MINUTES,
     DEFAULT_REELS_INTERVAL_MINUTES,
     DEFAULT_STORIES_INTERVAL_MINUTES,
+    get_calendly_interval_minutes,
     get_reels_interval_minutes,
     get_stories_interval_minutes,
 )
@@ -92,6 +96,39 @@ async def auto_refresh_reels_metrics() -> None:
         print(f"[scheduler] Error general en auto_refresh_reels_metrics: {e}")
 
 
+async def auto_sync_calendly() -> None:
+    """Auto-check Calendly → sync solo si hay eventos nuevos."""
+    from src.controllers.calendly_controller import (
+        list_calendly_user_ids_with_token,
+        run_calendly_auto_sync_for_user,
+    )
+
+    try:
+        interval_m = get_calendly_interval_minutes()
+        user_ids = list_calendly_user_ids_with_token()
+        print(
+            f"[scheduler] Calendly auto-check (cada {interval_m} min) "
+            f"para {len(user_ids)} usuario(s)"
+        )
+        for user_id in user_ids:
+            try:
+                result = run_calendly_auto_sync_for_user(int(user_id))
+                if result.get("skipped"):
+                    print(
+                        f"[scheduler] Calendly skip user={user_id} reason={result.get('reason')}"
+                    )
+                else:
+                    sync = result.get("sync") or {}
+                    print(
+                        f"[scheduler] Calendly sync OK user={user_id} "
+                        f"created={sync.get('created')} updated={sync.get('updated')}"
+                    )
+            except Exception as e:
+                print(f"[scheduler] Calendly FAILED user={user_id}: {e}")
+    except Exception as e:
+        print(f"[scheduler] Error general en auto_sync_calendly: {e}")
+
+
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     if is_db_configured():
@@ -111,18 +148,31 @@ async def lifespan(_: FastAPI):
             id=REELS_JOB_ID,
             replace_existing=True,
         )
+        scheduler.add_job(
+            auto_sync_calendly,
+            trigger=IntervalTrigger(
+                minutes=DEFAULT_CALENDLY_INTERVAL_MINUTES,
+                timezone=AR_TZ,
+            ),
+            id=CALENDLY_JOB_ID,
+            replace_existing=True,
+        )
         bind_sync_scheduler(scheduler)
         apply_sync_schedules()
         scheduler.start()
         print(
             f"[scheduler] Auto-sync historias cada {get_stories_interval_minutes()} min "
-            f"(próximo job según APScheduler)"
+            f"(proximo job segun APScheduler)"
         )
         print(
             f"[scheduler] Auto refresh-metrics reels cada {get_reels_interval_minutes()} min"
         )
+        print(
+            f"[scheduler] Auto-sync Calendly cada {get_calendly_interval_minutes()} min "
+            f"(check liviano -> sync solo si hay novedades)"
+        )
     else:
-        print("[startup] Sin DATABASE_URL — init_db y scheduler omitidos. Configurá backend/.env")
+        print("[startup] Sin DATABASE_URL — init_db y scheduler omitidos. Configura backend/.env")
     yield
     if scheduler.running:
         scheduler.shutdown()
@@ -153,6 +203,7 @@ app.include_router(master_lists_router)
 app.include_router(programs_router)
 app.include_router(avatars_router)
 app.include_router(leads_router)
+app.include_router(call_reports_router)
 app.include_router(keywords_router)
 app.include_router(reels_router)
 app.include_router(bio_router)

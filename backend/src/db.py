@@ -65,11 +65,18 @@ def init_db() -> None:
             ("ingresos_rango", "VARCHAR DEFAULT ''"),
             ("email", "VARCHAR DEFAULT ''"),
             ("objetivo", "VARCHAR DEFAULT ''"),
+            ("situacion_actual", "TEXT DEFAULT ''"),
+            ("reto_actual", "TEXT DEFAULT ''"),
         ]:
             db.execute(f"""
                 ALTER TABLE lead
                 ADD COLUMN IF NOT EXISTS {col} {tipo}
             """)
+
+        db.execute("""
+            ALTER TABLE app_sync_settings
+            ADD COLUMN IF NOT EXISTS calendly_interval_minutes INTEGER NOT NULL DEFAULT 360
+        """)
 
     db.create_tables(check_tables=True)
 

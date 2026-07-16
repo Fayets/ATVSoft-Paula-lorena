@@ -71,6 +71,15 @@ function ConnectionCardInner({
   const [calendlyWebhookInfo, setCalendlyWebhookInfo] = useState<CalendlyWebhookInfo | null>(null)
   const [syncing, setSyncing] = useState(false)
   const [syncStatus, setSyncStatus] = useState('')
+  const [autoSyncInfo, setAutoSyncInfo] = useState<{
+    interval_hours: number
+    interval_minutes?: number
+    last_sync_at: string | null
+    last_check_at: string | null
+    last_check_has_pending: boolean
+    next_run_at: string | null
+    enabled: boolean
+  } | null>(null)
   const {
     month: calendlySyncMonth,
     setMonth: setCalendlySyncMonth,
@@ -163,6 +172,41 @@ function ConnectionCardInner({
     [onSave, platform.key, connection?.credentials],
   )
 
+  const refreshCalendlyAutoStatus = useCallback(async () => {
+    if (platform.key !== 'calendly') return
+    try {
+      const res = await fetch(`${resolveBackendBase(apiBase)}/calendly/auto-sync-status`, {
+        headers: backendAuthHeaders(),
+      })
+      if (!res.ok) return
+      const data = (await res.json()) as {
+        interval_hours?: number
+        interval_minutes?: number
+        last_sync_at?: string | null
+        last_check_at?: string | null
+        last_check_has_pending?: boolean
+        next_run_at?: string | null
+        enabled?: boolean
+      }
+      setAutoSyncInfo({
+        interval_hours: data.interval_hours ?? 6,
+        interval_minutes: data.interval_minutes,
+        last_sync_at: data.last_sync_at ?? null,
+        last_check_at: data.last_check_at ?? null,
+        last_check_has_pending: Boolean(data.last_check_has_pending),
+        next_run_at: data.next_run_at ?? null,
+        enabled: Boolean(data.enabled),
+      })
+    } catch {
+      /* sin sesión o backend caído */
+    }
+  }, [apiBase, platform.key])
+
+  useEffect(() => {
+    if (platform.key !== 'calendly' || !isConnected) return
+    void refreshCalendlyAutoStatus()
+  }, [platform.key, isConnected, refreshCalendlyAutoStatus, connection?.last_sync_at])
+
   const syncCalendly = useCallback(async () => {
     if (platform.key !== 'calendly') return
     const apiKey = (form.api_key || connection?.credentials?.api_key || '').trim()
@@ -200,6 +244,7 @@ function ConnectionCardInner({
       setSyncStatus(
         `${monthLabel}: ${data.created ?? 0} leads creados, ${data.updated ?? 0} actualizados.`,
       )
+      await refreshCalendlyAutoStatus()
       await onSyncComplete?.()
     } catch (e) {
       setSyncStatus(e instanceof Error ? e.message : 'Error al sincronizar')
@@ -215,6 +260,7 @@ function ConnectionCardInner({
     form.api_key,
     onSyncComplete,
     platform.key,
+    refreshCalendlyAutoStatus,
   ])
 
   const syncGhl = useCallback(async () => {
@@ -331,6 +377,46 @@ function ConnectionCardInner({
         <div className="mb-3 text-[10px] font-semibold uppercase tracking-wider text-[var(--text3)]">
           Sincronizar leads
         </div>
+        <p className="mb-3 text-[12px] leading-snug text-[var(--text2)]">
+          Auto cada{' '}
+          {autoSyncInfo?.interval_minutes
+            ? autoSyncInfo.interval_minutes % 1440 === 0
+              ? `${autoSyncInfo.interval_minutes / 1440} día`
+              : autoSyncInfo.interval_minutes % 60 === 0
+                ? `${autoSyncInfo.interval_minutes / 60} h`
+                : `${autoSyncInfo.interval_minutes} min`
+            : `${autoSyncInfo?.interval_hours ?? 6} h`}
+          : el servidor revisa si hay agendas nuevas y solo entonces trae datos. El botón{' '}
+          <span className="font-semibold text-[var(--text)]">Sincronizar</span> siempre descarga
+          leads. Intervalo en Ajustes → Tasa de refresco.
+        </p>
+        {autoSyncInfo ? (
+          <ul className="mb-3 space-y-1 text-[11px] text-[var(--text3)]">
+            <li>
+              Última sync:{' '}
+              {autoSyncInfo.last_sync_at
+                ? new Date(autoSyncInfo.last_sync_at).toLocaleString('es-AR')
+                : 'nunca'}
+            </li>
+            <li>
+              Último auto-check:{' '}
+              {autoSyncInfo.last_check_at
+                ? new Date(autoSyncInfo.last_check_at).toLocaleString('es-AR')
+                : '—'}
+              {autoSyncInfo.last_check_at
+                ? autoSyncInfo.last_check_has_pending
+                  ? ' (había novedades)'
+                  : ' (al día)'
+                : null}
+            </li>
+            <li>
+              Próximo auto-check:{' '}
+              {autoSyncInfo.next_run_at
+                ? new Date(autoSyncInfo.next_run_at).toLocaleString('es-AR')
+                : 'al reiniciar el backend'}
+            </li>
+          </ul>
+        ) : null}
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
           <div className="w-full sm:w-auto sm:min-w-[200px]">
             <MonthSelector

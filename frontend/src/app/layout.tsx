@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import Script from 'next/script'
+import { BetaBanner } from '@/shared/components/beta-banner'
 import { ThemeProvider } from '@/shared/components/theme-provider'
 import { ToastProvider } from '@/shared/components/toast'
 import './globals.css'
@@ -12,7 +13,7 @@ const inter = Inter({
 })
 
 export const metadata: Metadata = {
-  title: 'ATV',
+  title: 'ATV Soft (Beta)',
   description: 'Plataforma integral de gestion de contenido y ventas para creadores high-ticket',
 }
 
@@ -30,7 +31,10 @@ export default function RootLayout({
           {themeScript}
         </Script>
         <ThemeProvider>
-          <ToastProvider>{children}</ToastProvider>
+          <ToastProvider>
+            <BetaBanner />
+            {children}
+          </ToastProvider>
         </ThemeProvider>
       </body>
     </html>

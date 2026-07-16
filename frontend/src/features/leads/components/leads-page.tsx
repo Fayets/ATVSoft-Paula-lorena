@@ -414,32 +414,36 @@ export function LeadsPage() {
     const sequences: Record<string, AgendaSequenceLookup> = {}
     const youtube: Record<string, AgendaYoutubeLookup> = {}
     try {
-      let page = 1
-      for (;;) {
-        const res = await apiFetch(`/reels?page=${page}&page_size=50&skip_agg=1`)
-        const data = (await res.json().catch(() => ({}))) as {
-          reels?: { id: string; title: string | null; published_at?: string | null }[]
-          total_pages?: number
-        }
-        if (!res.ok) break
-        for (const r of data.reels || []) {
-          reels[String(r.id)] = {
-            title: (r.title && r.title.trim()) || `Reel ${r.id}`,
-            publishedAt: r.published_at ?? null,
+      const loadAllReels = async () => {
+        let page = 1
+        for (;;) {
+          const res = await apiFetch(`/reels?page=${page}&page_size=50&skip_agg=1`)
+          const data = (await res.json().catch(() => ({}))) as {
+            reels?: { id: string; title: string | null; published_at?: string | null }[]
+            total_pages?: number
           }
+          if (!res.ok) break
+          for (const r of data.reels || []) {
+            reels[String(r.id)] = {
+              title: (r.title && r.title.trim()) || `Reel ${r.id}`,
+              publishedAt: r.published_at ?? null,
+            }
+          }
+          const tp = Math.max(1, data.total_pages ?? 1)
+          if (page >= tp) break
+          page += 1
+          if (page > 30) break
         }
-        const tp = Math.max(1, data.total_pages ?? 1)
-        if (page >= tp) break
-        page += 1
-        if (page > 30) break
       }
-      const sr = await apiFetch('/stories/sequences?all_months=true')
-      const seqData = (await sr.json().catch(() => [])) as {
-        id: number
-        sequence_date: string
-        title: string | null
-      }[]
-      if (sr.ok && Array.isArray(seqData)) {
+
+      const loadStories = async () => {
+        const sr = await apiFetch('/stories/sequences?all_months=true')
+        const seqData = (await sr.json().catch(() => [])) as {
+          id: number
+          sequence_date: string
+          title: string | null
+        }[]
+        if (!sr.ok || !Array.isArray(seqData)) return
         for (const s of seqData) {
           const meta = {
             title:
@@ -451,28 +455,33 @@ export function LeadsPage() {
           sequences[`story:${s.id}`] = meta
         }
       }
-      let yp = 1
-      for (;;) {
-        const yr = await apiFetch(`/youtube/videos?page=${yp}&page_size=50&skip_agg=1`)
-        const yd = (await yr.json().catch(() => ({}))) as {
-          videos?: { id: string; title: string | null; published_at?: string | null }[]
-          total_pages?: number
-        }
-        if (!yr.ok) break
-        for (const v of yd.videos || []) {
-          const id = String(v.id)
-          const meta = {
-            title: (v.title && v.title.trim()) || `YouTube ${id}`,
-            publishedAt: v.published_at ?? null,
+
+      const loadAllYoutube = async () => {
+        let yp = 1
+        for (;;) {
+          const yr = await apiFetch(`/youtube/videos?page=${yp}&page_size=50&skip_agg=1`)
+          const yd = (await yr.json().catch(() => ({}))) as {
+            videos?: { id: string; title: string | null; published_at?: string | null }[]
+            total_pages?: number
           }
-          youtube[id] = meta
-          youtube[`youtube:${id}`] = meta
+          if (!yr.ok) break
+          for (const v of yd.videos || []) {
+            const id = String(v.id)
+            const meta = {
+              title: (v.title && v.title.trim()) || `YouTube ${id}`,
+              publishedAt: v.published_at ?? null,
+            }
+            youtube[id] = meta
+            youtube[`youtube:${id}`] = meta
+          }
+          const ytp = Math.max(1, yd.total_pages ?? 1)
+          if (yp >= ytp) break
+          yp += 1
+          if (yp > 40) break
         }
-        const ytp = Math.max(1, yd.total_pages ?? 1)
-        if (yp >= ytp) break
-        yp += 1
-        if (yp > 40) break
       }
+
+      await Promise.all([loadAllReels(), loadStories(), loadAllYoutube()])
       setAgendaLookups({ reels, sequences, youtube })
     } catch {
       /* noop */
@@ -1353,7 +1362,7 @@ function LeadsTable({
 }
 
 /** Campos con respuesta larga: en la grilla solo «Abrir» → modal con texto completo. */
-const MODAL_TEXT_CELL_KEYS = ['razon_compra', 'objetivo'] as const
+const MODAL_TEXT_CELL_KEYS = ['situacion_actual', 'reto_actual', 'objetivo', 'ingresos_lead'] as const
 
 function AbrirTextoModalCell({
   text,

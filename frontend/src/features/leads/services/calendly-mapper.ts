@@ -12,6 +12,7 @@ type CalendlyPayload = {
     email: string
     created_at: string
     uri: string
+    text_reminder_number?: string
     scheduled_event: {
       uri: string
       start_time: string
@@ -39,12 +40,6 @@ function parseMonth(isoString: string): string {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
 }
 
-function parseIngresos(answer: string | null): number {
-  if (!answer) return 0
-  const nums = answer.replace(/[^0-9]/g, '')
-  return nums ? parseInt(nums, 10) : 0
-}
-
 export function mapCalendlyToLead(body: CalendlyPayload, webhookToken: string) {
   const { payload } = body
   const qa = payload.questions_and_answers || []
@@ -53,21 +48,29 @@ export function mapCalendlyToLead(body: CalendlyPayload, webhookToken: string) {
     p_webhook_token: webhookToken,
     p_client_name: payload.name,
     p_email: payload.email,
-    p_phone: findAnswer(qa, 'telefono') || findAnswer(qa, 'phone'),
+    p_phone:
+      findAnswer(qa, 'teléfono') ||
+      findAnswer(qa, 'telefono') ||
+      findAnswer(qa, 'phone') ||
+      payload.text_reminder_number ||
+      null,
     p_ig_handle: findAnswer(qa, 'instagram'),
     p_avatar_type: findAnswer(qa, 'perfil') || findAnswer(qa, 'opciones describe'),
     p_scheduled_at: parseCalendlyDate(payload.created_at),
     p_call_at: parseCalendlyDate(payload.scheduled_event.start_time),
-    p_ingresos_mensuales: parseIngresos(
-      findAnswer(qa, 'generando mensualmente') ||
-        findAnswer(qa, 'EUR') ||
-        findAnswer(qa, 'euros') ||
-        findAnswer(qa, 'USD'),
-    ),
-    p_compromiso: findAnswer(qa, 'comprometida') || findAnswer(qa, 'decision'),
-    p_dolores_setting: findAnswer(qa, 'problema') || findAnswer(qa, 'cuello de botella'),
-    p_urgencia: findAnswer(qa, 'pronto') || findAnswer(qa, 'resolver'),
-    p_disposicion_invertir: findAnswer(qa, 'invertir') || findAnswer(qa, 'dispuesto'),
+    p_situacion_actual: findAnswer(qa, 'situación actual') || findAnswer(qa, 'situacion actual'),
+    p_objetivo:
+      findAnswer(qa, 'mínimo una hora') ||
+      findAnswer(qa, 'minimo una hora') ||
+      findAnswer(qa, 'hora al día') ||
+      findAnswer(qa, 'hora al dia'),
+    p_reto_actual: findAnswer(qa, 'mayor reto'),
+    p_ingresos_rango:
+      findAnswer(qa, 'con cuánto dinero') ||
+      findAnswer(qa, 'con cuanto dinero') ||
+      findAnswer(qa, 'cuánto dinero') ||
+      findAnswer(qa, 'cuanto dinero'),
+    p_compromiso: findAnswer(qa, 'comprometidas') || findAnswer(qa, 'comprometida'),
     p_calendly_event_uri: payload.scheduled_event.uri,
     p_calendly_invitee_uri: payload.uri,
     p_month: parseMonth(payload.scheduled_event.start_time),

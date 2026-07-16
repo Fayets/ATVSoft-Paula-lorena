@@ -3,11 +3,12 @@ from datetime import date, datetime, timezone
 from typing import Annotated
 from zoneinfo import ZoneInfo
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Query
+from fastapi import APIRouter, BackgroundTasks, Depends, Header, HTTPException, Query
 from pony.orm import ObjectNotFound, db_session
 
 from src.db_query_utils import rows_for_user
 from src.lead_display_utils import compute_dias_para_agendar, lead_display_nombre
+from src.models import CallReport as CallReportEntity
 from src.models import Lead as LeadEntity, ReelContent, StorySequence, YoutubeContent
 from src.schemas import (
     LeadCreateRequest,
@@ -15,6 +16,12 @@ from src.schemas import (
     LeadPatchRequest,
     LeadsListResponse,
     LeadsMetricsOut,
+)
+from src.services.call_report_service import (
+    analyze_call_report,
+    get_or_create_report,
+    is_fathom_link,
+    normalize_fathom_url,
 )
 from src.services.programs_services import (
     build_program_norm_price_map,
@@ -261,6 +268,8 @@ def _to_lead_out(row: LeadEntity, norm_prices: dict[str, float] | None = None) -
         dolores_llamada=row.dolores_llamada,
         razon_compra=row.razon_compra,
         objetivo=(row.objetivo or "").strip() or None,
+        situacion_actual=(getattr(row, "situacion_actual", None) or "").strip() or None,
+        reto_actual=(getattr(row, "reto_actual", None) or "").strip() or None,
         dias_agendamiento=compute_dias_para_agendar(row.primer_contacto, row.agendo),
         ingresos_mensuales=ing,
         ingresos_rango=(row.ingresos_rango or "").strip() or None,
@@ -437,6 +446,7 @@ def leads_metrics(
 def patch_lead(
     lead_id: str,
     body: LeadPatchRequest,
+    background: BackgroundTasks,
     user_id: Annotated[str, Depends(require_user_id)],
 ) -> LeadOut:
     try:
@@ -448,6 +458,8 @@ def patch_lead(
     data = body.model_dump(exclude_unset=True)
     if not data:
         raise HTTPException(status_code=400, detail="Sin campos para actualizar.")
+
+    fathom_to_analyze: str | None = None
 
     with db_session:
         try:
@@ -507,7 +519,11 @@ def patch_lead(
             else:
                 row.agendo_en = raw or "Chat"
         if "call_link" in data:
+            prev_link = normalize_fathom_url(row.link_llamada or "")
             row.link_llamada = data["call_link"] or ""
+            nuevo_link = normalize_fathom_url(row.link_llamada or "")
+            if is_fathom_link(nuevo_link) and nuevo_link != prev_link:
+                fathom_to_analyze = nuevo_link
         if "program_offered" in data:
             row.programa_ofrecido = data["program_offered"] or ""
         if "programada_ofrecido_llamada" in data:
@@ -530,6 +546,14 @@ def patch_lead(
             row.closer_report = data["closer_report"] or ""
         if "razon_compra" in data:
             row.razon_compra = data["razon_compra"] or ""
+        if "objetivo" in data:
+            row.objetivo = data["objetivo"] or ""
+        if "situacion_actual" in data:
+            row.situacion_actual = data["situacion_actual"] or ""
+        if "reto_actual" in data:
+            row.reto_actual = data["reto_actual"] or ""
+        if "ingresos_rango" in data:
+            row.ingresos_rango = data["ingresos_rango"] or ""
         if "setter" in data:
             row.setter = (str(data["setter"]).strip() if data["setter"] is not None else "") or ""
         if "closer" in data:
@@ -538,7 +562,14 @@ def patch_lead(
         _sync_dias_para_agendar(row)
 
         norm_prices = build_program_norm_price_map(uid)
-        return _to_lead_out(row, norm_prices)
+        result = _to_lead_out(row, norm_prices)
+
+    if fathom_to_analyze:
+        report_id, created = get_or_create_report(lid, fathom_to_analyze, uid)
+        if created:
+            background.add_task(analyze_call_report, report_id)
+
+    return result
 
 
 @router.delete("/{lead_id}")
@@ -546,7 +577,7 @@ def delete_lead(
     lead_id: str,
     user_id: Annotated[str, Depends(require_user_id)],
 ) -> dict[str, str]:
-    """Elimina un lead (cliente) si pertenece al usuario autenticado."""
+    """Elimina un lead si pertenece al usuario. Los CallReport se conservan con snapshot del nombre."""
     try:
         lid = int(lead_id)
         uid = int(user_id)
@@ -560,6 +591,12 @@ def delete_lead(
             raise HTTPException(status_code=404, detail="Lead no encontrado.") from e
         if int(row.user_id) != uid:
             raise HTTPException(status_code=404, detail="Lead no encontrado.")
+        nombre_snap = lead_display_nombre(row.nombre, row.ig) or (row.nombre or "").strip() or "Sin nombre"
+        for report in CallReportEntity.select(lambda r: r.lead_id == lid):
+            if int(report.user_id) != uid:
+                continue
+            if not (report.lead_nombre or "").strip():
+                report.lead_nombre = nombre_snap
         row.delete()
 
     return {"status": "ok", "id": str(lid)}

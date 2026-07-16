@@ -9,6 +9,7 @@ from zoneinfo import ZoneInfo
 from apscheduler.triggers.interval import IntervalTrigger
 
 from src.services.sync_settings_service import (
+    get_calendly_interval_minutes,
     get_reels_interval_minutes,
     get_stories_interval_minutes,
 )
@@ -16,6 +17,7 @@ from src.services.sync_settings_service import (
 AR_TZ = ZoneInfo("America/Argentina/Buenos_Aires")
 STORIES_JOB_ID = "auto_sync_stories"
 REELS_JOB_ID = "auto_refresh_reels_metrics"
+CALENDLY_JOB_ID = "auto_sync_calendly"
 
 _scheduler: Any | None = None
 
@@ -71,6 +73,7 @@ def apply_sync_schedules(*, stories_run_immediately: bool = False) -> None:
         return
     stories_m = get_stories_interval_minutes()
     reels_m = get_reels_interval_minutes()
+    calendly_m = get_calendly_interval_minutes()
     now = datetime.now(AR_TZ)
 
     stories_job = _scheduler.get_job(STORIES_JOB_ID)
@@ -87,4 +90,11 @@ def apply_sync_schedules(*, stories_run_immediately: bool = False) -> None:
         _scheduler.reschedule_job(
             REELS_JOB_ID,
             trigger=IntervalTrigger(minutes=reels_m, timezone=AR_TZ),
+        )
+
+    calendly_job = _scheduler.get_job(CALENDLY_JOB_ID)
+    if calendly_job is not None:
+        _scheduler.reschedule_job(
+            CALENDLY_JOB_ID,
+            trigger=IntervalTrigger(minutes=calendly_m, timezone=AR_TZ),
         )

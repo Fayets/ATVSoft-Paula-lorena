@@ -46,10 +46,14 @@ export type Lead = {
   dolores_llamada: string | null
   razon_compra: string | null
   objetivo: string | null
+  /** Respuesta larga del form Calendly (situación actual). */
+  situacion_actual: string | null
+  /** Mayor reto (form Calendly). */
+  reto_actual: string | null
   /** Días desde 1er contacto hasta formulario Calendly (API calculado). */
   dias_agendamiento: number | null
   ingresos_mensuales: number
-  /** Rango de ingresos GHL (texto, ej. "5.000-10.000€"). */
+  /** Rango de ingresos / presupuesto (Calendly o GHL). */
   ingresos_rango?: string | null
   compromiso: string | null
   urgencia: string | null
@@ -198,6 +202,7 @@ export function buildColumns(
     { key: 'ig_handle', label: 'IG', width: 130, type: 'text', editable: true, defaultVisible: true },
     { key: 'phone', label: 'Tel', width: 140, type: 'text', editable: true, defaultVisible: true },
     { key: 'email', label: 'Email', width: 180, type: 'text', editable: false, defaultVisible: true },
+    { key: 'situacion_actual', label: 'Situación actual', width: 120, type: 'text', editable: true, defaultVisible: true },
     { key: 'avatar_type', label: 'Avatar', width: 170, type: 'badge', editable: true, options: avatarOpts, colors: avatarColors, defaultVisible: true },
     // Estado y equipo
     { key: 'status', label: 'Status', width: 130, type: 'select', editable: true, options: STATUS_OPTIONS, colors: STATUS_COLORS, defaultVisible: true },
@@ -221,9 +226,10 @@ export function buildColumns(
     { key: 'closer_report', label: 'Reporte closer', width: 200, type: 'text', editable: true, defaultVisible: false },
     { key: 'call_link', label: 'Link de llamada', width: 110, type: 'link', editable: true, defaultVisible: true },
     { key: 'dolores_llamada', label: 'Dolores llamada', width: 200, type: 'text', editable: true, defaultVisible: false },
-    { key: 'razon_compra', label: 'Razón compra', width: 100, type: 'text', editable: true, defaultVisible: true },
-    { key: 'objetivo', label: 'Objetivo', width: 90, type: 'text', editable: true, defaultVisible: true },
-    { key: 'ingresos_lead', label: 'Ingresos lead', width: 160, type: 'text', editable: false, defaultVisible: true },
+    { key: 'razon_compra', label: 'Razón compra', width: 100, type: 'text', editable: true, defaultVisible: false },
+    { key: 'objetivo', label: 'Objetivo', width: 140, type: 'text', editable: true, defaultVisible: true },
+    { key: 'reto_actual', label: 'Reto actual', width: 120, type: 'text', editable: true, defaultVisible: true },
+    { key: 'ingresos_lead', label: 'Ingresos', width: 160, type: 'text', editable: false, defaultVisible: true },
     { key: 'ingresos_mensuales', label: 'Ingresos lead ($)', width: 130, type: 'currency', editable: true, defaultVisible: false },
     // Venta
     {

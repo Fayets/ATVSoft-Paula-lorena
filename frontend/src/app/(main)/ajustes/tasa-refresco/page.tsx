@@ -8,13 +8,19 @@ import { useAuthUser } from '@/shared/hooks/use-auth-user'
 type SyncSettings = {
   stories_interval_minutes: number
   reels_interval_minutes: number
+  calendly_interval_minutes: number
   stories_next_sync: string | null
   reels_next_sync: string | null
+  calendly_next_sync: string | null
   min_interval_minutes: number
   max_interval_minutes: number
+  min_calendly_interval_minutes?: number
+  max_calendly_interval_minutes?: number
 }
 
-const PRESETS = [5, 15, 30, 60, 120, 360, 1440] as const
+const STORIES_PRESETS = [60, 120, 360] as const // 1 h, 2 h, 6 h
+const REELS_PRESETS = [120, 360, 1440] as const // 2 h, 6 h, 1 día
+const CALENDLY_PRESETS = [360, 720, 1440] as const // 6 h, 12 h, 1 día
 
 function formatIntervalLabel(minutes: number): string {
   if (minutes < 60) return `${minutes} min`
@@ -44,6 +50,7 @@ type IntervalFieldProps = {
   min: number
   max: number
   nextSync: string | null
+  presets?: readonly number[]
   onChange: (v: string) => void
   onPreset: (minutes: number) => void
 }
@@ -56,6 +63,7 @@ function IntervalField({
   min,
   max,
   nextSync,
+  presets = STORIES_PRESETS,
   onChange,
   onPreset,
 }: IntervalFieldProps) {
@@ -92,7 +100,7 @@ function IntervalField({
         </div>
       </div>
       <div className="mt-3 flex flex-wrap gap-2">
-        {PRESETS.map((m) => (
+        {presets.map((m) => (
           <button
             key={m}
             type="button"
@@ -124,6 +132,7 @@ export default function TasaRefrescoPage() {
   const [settings, setSettings] = useState<SyncSettings | null>(null)
   const [storiesMin, setStoriesMin] = useState('5')
   const [reelsMin, setReelsMin] = useState('1440')
+  const [calendlyMin, setCalendlyMin] = useState('360')
 
   const fetchSettings = useCallback(async () => {
     if (!ready) return
@@ -138,6 +147,7 @@ export default function TasaRefrescoPage() {
       setSettings(data)
       setStoriesMin(String(data.stories_interval_minutes))
       setReelsMin(String(data.reels_interval_minutes))
+      setCalendlyMin(String(data.calendly_interval_minutes ?? 360))
     } finally {
       setLoading(false)
     }
@@ -151,16 +161,22 @@ export default function TasaRefrescoPage() {
     if (!settings) return
     const stories = Number(storiesMin)
     const reels = Number(reelsMin)
+    const calendly = Number(calendlyMin)
     const { min_interval_minutes: min, max_interval_minutes: max } = settings
+    const calMin = settings.min_calendly_interval_minutes ?? 60
+    const calMax = settings.max_calendly_interval_minutes ?? max
     if (
       !Number.isFinite(stories) ||
       !Number.isFinite(reels) ||
+      !Number.isFinite(calendly) ||
       stories < min ||
       stories > max ||
       reels < min ||
-      reels > max
+      reels > max ||
+      calendly < calMin ||
+      calendly > calMax
     ) {
-      toast(`Los intervalos deben estar entre ${min} y ${max} minutos`)
+      toast(`Revisá los intervalos (Calendly: ${calMin}–${calMax} min)`)
       return
     }
     const storiesChanged = Math.round(stories) !== settings.stories_interval_minutes
@@ -172,6 +188,7 @@ export default function TasaRefrescoPage() {
         body: JSON.stringify({
           stories_interval_minutes: Math.round(stories),
           reels_interval_minutes: Math.round(reels),
+          calendly_interval_minutes: Math.round(calendly),
         }),
       })
       const data = (await res.json().catch(() => ({}))) as SyncSettings & { detail?: string }
@@ -182,6 +199,7 @@ export default function TasaRefrescoPage() {
       setSettings(data)
       setStoriesMin(String(data.stories_interval_minutes))
       setReelsMin(String(data.reels_interval_minutes))
+      setCalendlyMin(String(data.calendly_interval_minutes ?? 360))
       if (storiesChanged) {
         window.dispatchEvent(new Event('stories-sync-settings-updated'))
         toast('Guardado. Sincronizando historias y reiniciando contador…')
@@ -199,14 +217,17 @@ export default function TasaRefrescoPage() {
 
   const min = settings?.min_interval_minutes ?? 1
   const max = settings?.max_interval_minutes ?? 10080
+  const calMin = settings?.min_calendly_interval_minutes ?? 60
+  const calMax = settings?.max_calendly_interval_minutes ?? 10080
 
   return (
     <div>
       <div className="mb-8">
         <h2 className="text-lg font-semibold tracking-tight text-[var(--text)]">Tasa de refresco</h2>
         <p className="mt-1 max-w-2xl text-[12px] text-[var(--text3)]">
-          Configurá cada cuántos minutos el servidor sincroniza historias de Instagram y actualiza métricas de
-          reels en segundo plano. Los cambios aplican al instante sin reiniciar el backend.
+          Configurá cada cuánto corre cada job en segundo plano. En Calendly el intervalo es del
+          check liviano: solo si hay agendas nuevas se traen los datos. Los cambios aplican al
+          instante sin reiniciar el backend.
         </p>
       </div>
 
@@ -219,8 +240,9 @@ export default function TasaRefrescoPage() {
           min={min}
           max={max}
           nextSync={settings?.stories_next_sync ?? null}
+          presets={STORIES_PRESETS}
           onChange={setStoriesMin}
-          onPreset={setStoriesMin}
+          onPreset={(m) => setStoriesMin(String(m))}
         />
         <IntervalField
           label="Reels"
@@ -230,8 +252,21 @@ export default function TasaRefrescoPage() {
           min={min}
           max={max}
           nextSync={settings?.reels_next_sync ?? null}
+          presets={REELS_PRESETS}
           onChange={setReelsMin}
-          onPreset={setReelsMin}
+          onPreset={(m) => setReelsMin(String(m))}
+        />
+        <IntervalField
+          label="Calendly"
+          description="Cada X horas el servidor hace un check liviano; solo si hay novedades sincroniza leads. El botón «Sincronizar» en Conexiones siempre trae los datos."
+          value={calendlyMin}
+          disabled={saving}
+          min={calMin}
+          max={calMax}
+          nextSync={settings?.calendly_next_sync ?? null}
+          presets={CALENDLY_PRESETS}
+          onChange={setCalendlyMin}
+          onPreset={(m) => setCalendlyMin(String(m))}
         />
       </div>
 
