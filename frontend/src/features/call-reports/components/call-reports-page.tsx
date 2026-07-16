@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useAuthUser } from '@/shared/hooks/use-auth-user'
 import { useToast } from '@/shared/components/toast'
 import {
@@ -12,22 +12,93 @@ import type { CallReport } from '../types'
 import { CallReportsTable } from './CallReportsTable'
 
 const POLL_MS = 5000
+const VIEW_PASSWORD = 'paulalorena'
+const UNLOCK_KEY = 'atv-reporte-calls-unlocked'
 
 function hasPending(items: CallReport[]): boolean {
   return items.some((r) => r.estado === 'pendiente' || r.estado === 'procesando')
 }
 
+function CallReportsPasswordGate({ onUnlock }: { onUnlock: () => void }) {
+  const [password, setPassword] = useState('')
+  const [error, setError] = useState('')
+
+  const onSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    if (password.trim() !== VIEW_PASSWORD) {
+      setError('Contraseña incorrecta.')
+      return
+    }
+    try {
+      sessionStorage.setItem(UNLOCK_KEY, '1')
+    } catch {
+      /* ignore */
+    }
+    onUnlock()
+  }
+
+  return (
+    <div className="mx-auto max-w-sm py-16">
+      <h2 className="text-lg font-bold tracking-tight">Reporte calls</h2>
+      <p className="mt-1 text-[12px] text-[var(--text3)]">
+        Esta vista está protegida. Ingresá la contraseña para continuar.
+      </p>
+      <form onSubmit={onSubmit} className="mt-6 space-y-4">
+        <div>
+          <label
+            htmlFor="reporte-calls-password"
+            className="mb-2 block text-[10px] font-semibold uppercase tracking-wider text-[var(--text3)]"
+          >
+            Contraseña
+          </label>
+          <input
+            id="reporte-calls-password"
+            type="password"
+            autoComplete="current-password"
+            value={password}
+            onChange={(e) => {
+              setPassword(e.target.value)
+              if (error) setError('')
+            }}
+            className="w-full rounded-lg border border-[var(--border2)] bg-[var(--bg3)] px-4 py-3 text-sm text-[var(--text)] outline-none placeholder:text-[var(--text3)]"
+            placeholder="••••••••"
+            autoFocus
+          />
+        </div>
+        {error ? <p className="text-[12px] text-[var(--red)]">{error}</p> : null}
+        <button
+          type="submit"
+          className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg2)] px-4 py-2.5 text-[13px] font-medium text-[var(--text)] hover:bg-[var(--bg3)]"
+        >
+          Entrar
+        </button>
+      </form>
+    </div>
+  )
+}
+
 export function CallReportsPage() {
   const { ready, userId } = useAuthUser()
   const { toast } = useToast()
+  const [unlocked, setUnlocked] = useState(false)
+  const [unlockChecked, setUnlockChecked] = useState(false)
   const [items, setItems] = useState<CallReport[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [busy, setBusy] = useState(false)
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
+  useEffect(() => {
+    try {
+      setUnlocked(sessionStorage.getItem(UNLOCK_KEY) === '1')
+    } catch {
+      setUnlocked(false)
+    }
+    setUnlockChecked(true)
+  }, [])
+
   const fetchReports = useCallback(async (silent = false) => {
-    if (!ready || !userId) {
+    if (!ready || !userId || !unlocked) {
       setItems([])
       setLoading(false)
       return
@@ -51,18 +122,19 @@ export function CallReportsPage() {
     } finally {
       if (!silent) setLoading(false)
     }
-  }, [ready, userId, toast])
+  }, [ready, userId, unlocked, toast])
 
   useEffect(() => {
+    if (!unlocked) return
     void fetchReports()
-  }, [fetchReports])
+  }, [fetchReports, unlocked])
 
   useEffect(() => {
     if (pollRef.current) {
       clearInterval(pollRef.current)
       pollRef.current = null
     }
-    if (!ready || !userId) return undefined
+    if (!ready || !userId || !unlocked) return undefined
     if (!hasPending(items)) return undefined
 
     pollRef.current = setInterval(() => {
@@ -72,7 +144,7 @@ export function CallReportsPage() {
     return () => {
       if (pollRef.current) clearInterval(pollRef.current)
     }
-  }, [items, ready, userId, fetchReports])
+  }, [items, ready, userId, unlocked, fetchReports])
 
   const selectedList = useMemo(() => Array.from(selectedIds), [selectedIds])
 
@@ -130,6 +202,14 @@ export function CallReportsPage() {
       setBusy(false)
     }
   }, [selectedList, toast, fetchReports])
+
+  if (!unlockChecked) {
+    return <div className="py-12 text-[13px] text-[var(--text3)]">Cargando…</div>
+  }
+
+  if (!unlocked) {
+    return <CallReportsPasswordGate onUnlock={() => setUnlocked(true)} />
+  }
 
   if (!ready) {
     return <div className="py-12 text-[13px] text-[var(--text3)]">Cargando sesión…</div>
