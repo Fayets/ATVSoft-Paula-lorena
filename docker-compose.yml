@@ -3,10 +3,10 @@ version: '3.8'
 services:
   backend:
     build: ./backend
-    container_name: atv-mkt-backend
+    container_name: atv-paula-backend
     restart: always
     ports:
-      - "8001:8000"
+      - "8010:8000"
     env_file:
       - ./backend/.env
     volumes:
@@ -17,13 +17,13 @@ services:
       context: ./frontend
       args:
         # URL pública del backend (IP o dominio). Si usás Nginx con /api, poné https://tu-dominio.com
-        - NEXT_PUBLIC_BACKEND_URL=http://72.60.244.220:8001
-    container_name: atv-mkt-frontend
+        - NEXT_PUBLIC_BACKEND_URL=http://72.60.244.220:8010
+    container_name: atv-paula-frontend
     restart: always
     ports:
-      - "3001:3000"
+      - "3010:3000"
     environment:
       - BACKEND_URL=http://backend:8000
-      - NEXT_PUBLIC_BACKEND_URL=http://72.60.244.220:8001
+      - NEXT_PUBLIC_BACKEND_URL=http://72.60.244.220:8010
     depends_on:
       - backend
