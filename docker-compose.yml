@@ -17,8 +17,9 @@ services:
       context: ./frontend
       args:
         # Vacío = el navegador usa same-origin /api-backend (HTTPS vía Nginx).
-        # NO poner http://IP:puerto — con el sitio en https:// provoca Mixed Content.
         - NEXT_PUBLIC_BACKEND_URL=
+        # Hostname interno Docker (se bakea en los rewrites de Next).
+        - BACKEND_INTERNAL_URL=http://backend:8000
     container_name: atv-paula-frontend
     restart: always
     ports:
