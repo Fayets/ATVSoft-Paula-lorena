@@ -71,6 +71,7 @@ const settingsGroup: NavGroup = {
     { label: 'Programas', href: '/programas' },
     { label: 'Avatares', href: '/avatares' },
     { label: 'Tasa de refresco', href: '/ajustes/tasa-refresco' },
+    { label: 'Cambiar usuario / contraseña', href: '/ajustes/cambiar-contrasenia' },
     { label: 'Conexiones API', href: '/conexiones' },
   ],
 }

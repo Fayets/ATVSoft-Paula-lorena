@@ -21,6 +21,8 @@ const titles: Record<string, string> = {
   '/programas': 'Programas',
   '/avatares': 'Avatares',
   '/conexiones': 'Conexiones API',
+  '/ajustes/cambiar-contrasenia': 'Usuario y contraseña',
+  '/ajustes/tasa-refresco': 'Tasa de refresco',
 }
 
 const subtitles: Record<string, string> = {

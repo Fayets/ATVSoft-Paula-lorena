@@ -10,6 +10,8 @@ const loginSchema = z.object({
 export type AuthResult = {
   error?: string
   ok?: boolean
+  access_token?: string
+  user_id?: number
 }
 
 const BACKEND_BASE =
@@ -88,4 +90,47 @@ export async function logout() {
   sessionStorage.removeItem('auth_user_id')
   localStorage.removeItem('auth_user_id')
   window.dispatchEvent(new Event('auth-session-changed'))
+}
+
+export async function changePassword(
+  adminPassword: string,
+  options: { newPassword?: string; newUsername?: string },
+): Promise<AuthResult> {
+  if (!adminPassword.trim()) return { error: 'Clave de admin requerida' }
+  const newPassword = (options.newPassword || '').trim()
+  const newUsername = (options.newUsername || '').trim()
+  if (!newPassword && !newUsername) {
+    return { error: 'Indicá un nuevo usuario y/o una nueva contraseña' }
+  }
+  if (newPassword && newPassword.length < 6) {
+    return { error: 'La nueva contraseña debe tener al menos 6 caracteres' }
+  }
+
+  const token =
+    (typeof window !== 'undefined' &&
+      (sessionStorage.getItem('access_token') ||
+        sessionStorage.getItem('evoluciona_token') ||
+        sessionStorage.getItem('auth_token'))) ||
+    ''
+
+  const response = await fetch(`${BACKEND_BASE}/auth/change-password`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify({
+      admin_password: adminPassword,
+      ...(newPassword ? { new_password: newPassword } : {}),
+      ...(newUsername ? { new_username: newUsername } : {}),
+    }),
+  })
+  const data = (await response.json().catch(() => null)) as LoginResponseBody | null
+  if (!response.ok) {
+    return { error: formatLoginError(typeof data?.detail === 'string' ? data.detail : undefined) }
+  }
+  if (data?.access_token && typeof data.user_id === 'number') {
+    persistSession(data.access_token, data.user_id)
+  }
+  return { ok: true, access_token: data?.access_token, user_id: data?.user_id }
 }

@@ -29,6 +29,12 @@ class AuthMeResponse(BaseModel):
     user_id: int
 
 
+class AuthChangePasswordRequest(BaseModel):
+    admin_password: str
+    new_password: str | None = None
+    new_username: str | None = None
+
+
 class MasterListUpsertRequest(BaseModel):
     items: list[str] = Field(default_factory=list)
 
