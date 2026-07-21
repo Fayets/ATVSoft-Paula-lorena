@@ -7,6 +7,7 @@ from datetime import datetime
 from pony.orm import ObjectNotFound, db_session, flush
 
 from src.lead_display_utils import lead_display_nombre
+from src.models import ApiConnection
 from src.models import CallReport
 from src.models import Lead as LeadEntity
 from src.services.claude_cli import run_claude_analysis
@@ -67,10 +68,14 @@ def analyze_call_report(report_id: int) -> None:
                 row.lead_nombre = name
         fathom_url = row.fathom_url
         user_id = int(row.user_id)
+        claude_conn = ApiConnection.get(user_id=user_id, platform="claude")
+        claude_api_key = ""
+        if claude_conn and isinstance(claude_conn.credentials, dict):
+            claude_api_key = str(claude_conn.credentials.get("api_key") or "").strip()
 
     try:
         meeting = fetch_fathom_meeting(fathom_url, user_id)
-        analysis = run_claude_analysis(meeting.get("transcript") or "")
+        analysis = run_claude_analysis(meeting.get("transcript") or "", api_key=claude_api_key or None)
         with db_session:
             row = CallReport.get(id=report_id)
             if not row:

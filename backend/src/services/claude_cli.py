@@ -100,7 +100,7 @@ def _extract_result_text(stdout: str) -> str:
     return raw
 
 
-def run_claude_analysis(transcript_text: str) -> dict:
+def run_claude_analysis(transcript_text: str, api_key: str | None = None) -> dict:
     payload = (
         ANALYSIS_INSTRUCTIONS
         + "\n\n--- TRANSCRIPCIÓN ---\n\n"
@@ -111,6 +111,10 @@ def run_claude_analysis(transcript_text: str) -> dict:
         "Analizá la transcripción del stdin según las instrucciones del inicio. "
         "Respondé solo el JSON pedido (sin markdown)."
     )
+    child_env = {**os.environ}
+    if api_key:
+        child_env["ANTHROPIC_API_KEY"] = api_key
+        child_env.pop("CLAUDE_CODE_OAUTH_TOKEN", None)
     try:
         proc = subprocess.run(
             [
@@ -128,7 +132,7 @@ def run_claude_analysis(transcript_text: str) -> dict:
             encoding="utf-8",
             errors="replace",
             timeout=300,
-            env={**os.environ},
+            env=child_env,
         )
     except FileNotFoundError as exc:
         raise RuntimeError(

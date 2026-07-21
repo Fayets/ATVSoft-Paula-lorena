@@ -101,15 +101,11 @@ export function Sidebar({ className }: SidebarProps) {
     <aside
       className={`sticky top-0 flex h-screen w-56 flex-shrink-0 flex-col border-r border-[var(--border)] bg-[var(--bg2)] ${className ?? ''}`}
     >
-      <div className="flex flex-col items-center gap-2 px-4 pt-4 pb-3">
+      <div className="flex justify-center px-4 pt-4 pb-3">
         <BrandLogo
           alt="ATV"
           className="h-12 w-auto max-w-[72px] flex-shrink-0 object-contain opacity-95"
         />
-        {/* Quitar junto con BetaBanner cuando salga de beta */}
-        <span className="rounded border border-[var(--border2)] bg-[var(--amber)]/20 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-[var(--text2)]">
-          Beta
-        </span>
       </div>
 
       {/* Navigation */}

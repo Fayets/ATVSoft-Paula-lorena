@@ -130,10 +130,29 @@ const PLATFORMS: ConnectionPlatform[] = [
       ],
     },
   },
+  {
+    key: 'claude',
+    label: 'Claude (Anthropic)',
+    icon: '🧠',
+    subtitle: 'Analizá las llamadas con tu propia cuenta de Claude',
+    fields: [
+      { key: 'api_key', label: 'API Key de Anthropic', placeholder: 'sk-ant-...', type: 'password', span: 2 },
+    ],
+    guide: {
+      title: 'Cómo configurar Claude',
+      steps: [
+        'Entrá a console.anthropic.com e iniciá sesión (o creá una cuenta)',
+        'Andá a Settings → API Keys → Create Key',
+        'Copiá la key (empieza con sk-ant-) y pegala acá',
+        'Necesitás saldo o un plan activo en la cuenta para que el análisis funcione',
+        'El análisis de llamadas usará esta key: el consumo se factura a tu cuenta de Anthropic',
+      ],
+    },
+  },
 ]
 
 const SETUP_ORDER = ['instagram', 'manychat', 'calendly', 'youtube'] as const
-const APP_ORDER = ['calendly', 'ghl', 'manychat', 'instagram', 'youtube', 'fathom'] as const
+const APP_ORDER = ['calendly', 'ghl', 'manychat', 'instagram', 'youtube', 'fathom', 'claude'] as const
 
 function pick(order: readonly string[]): ConnectionPlatform[] {
   const map = new Map(PLATFORMS.map((p) => [p.key, p]))
