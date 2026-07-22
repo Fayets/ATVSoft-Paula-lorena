@@ -23,7 +23,10 @@ def ensure_db_bound() -> bool:
 
 def init_db() -> None:
     if not ensure_db_bound():
-        raise RuntimeError("Base de datos no configurada. Configurá DATABASE_URL en backend/.env.")
+        raise RuntimeError(
+            "Base de datos no configurada. Configurá DATABASE_URL o "
+            "DB_PROVIDER/DB_HOST (y user/pass/name) en backend/.env."
+        )
 
     t0 = time.time()
     print("[db] Inicializando base de datos...")

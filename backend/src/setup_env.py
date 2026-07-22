@@ -62,12 +62,13 @@ def get_database_url() -> str:
     return url
 
 
-def is_db_configured() -> bool:
-    return bool(get_database_url())
-
-
 def load_db_bind_kwargs() -> dict | None:
-    """Argumentos para `db.bind()` si hay configuración."""
+    """Argumentos para `db.bind()` si hay configuración.
+
+    Soporta dos modos permanentes:
+      a) `DATABASE_URL` (p. ej. Neon en desarrollo/pruebas)
+      b) variables sueltas `DB_PROVIDER` + `DB_HOST` (+ user/pass/name) para Postgres local/Docker
+    """
     url = get_database_url()
     if url:
         return {"provider": "postgres", "dsn": url}
@@ -85,3 +86,8 @@ def load_db_bind_kwargs() -> dict | None:
         "host": host,
         "database": env.get("DB_NAME") or os.environ.get("DB_NAME") or "",
     }
+
+
+def is_db_configured() -> bool:
+    """True si hay DB usable: misma lógica que `load_db_bind_kwargs()` (URL o DB_*)."""
+    return load_db_bind_kwargs() is not None
