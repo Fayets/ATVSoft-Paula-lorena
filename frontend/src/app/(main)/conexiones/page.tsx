@@ -40,6 +40,12 @@ export default function ConexionesPage() {
             ? String((raw as { detail: unknown }).detail)
             : res.statusText
         toast(`Error al cargar conexiones: ${detail}`)
+        setConnections({})
+        return
+      }
+      if (!Array.isArray(raw)) {
+        toast('Error al cargar conexiones: respuesta inválida del servidor.')
+        setConnections({})
         return
       }
       const rows = raw as Array<{
