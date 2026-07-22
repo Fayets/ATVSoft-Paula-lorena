@@ -8,6 +8,8 @@ import shutil
 import subprocess
 from pathlib import Path
 
+from src.services.anthropic_service import normalize_claude_runtime_error
+
 
 def _resolve_claude_bin() -> str:
     """En Windows los wrappers npm (.cmd/.ps1) rompen stdin/stdout; usar el .exe."""
@@ -142,7 +144,8 @@ def run_claude_analysis(transcript_text: str, api_key: str | None = None) -> dic
         ) from exc
     if proc.returncode != 0:
         stderr = (proc.stderr or "")[:800]
-        raise RuntimeError(f"claude returncode={proc.returncode}: {stderr}")
+        combined = f"{stderr}\n{(proc.stdout or '')[:400]}"
+        raise RuntimeError(normalize_claude_runtime_error(combined))
     result_text = _extract_result_text(proc.stdout or "")
     try:
         parsed = _parse_json_lenient(str(result_text))

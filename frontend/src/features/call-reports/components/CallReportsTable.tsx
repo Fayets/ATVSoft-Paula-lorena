@@ -11,6 +11,7 @@ type Props = {
   onToggleRow: (id: string) => void
   onToggleAll: () => void
   onError?: (msg: string) => void
+  onRefresh?: () => void
 }
 
 const COLS = 'grid-cols-[36px_1.2fr_0.85fr_1.6fr_36px]'
@@ -22,6 +23,7 @@ export function CallReportsTable({
   onToggleRow,
   onToggleAll,
   onError,
+  onRefresh,
 }: Props) {
   const [expandedId, setExpandedId] = useState<string | null>(null)
 
@@ -113,7 +115,7 @@ export function CallReportsTable({
               </div>
               {open && (
                 <div className="px-4 pb-4">
-                  <CallReportDetail report={row} onError={onError} />
+                  <CallReportDetail report={row} onError={onError} onReanalyze={onRefresh} />
                 </div>
               )}
             </div>

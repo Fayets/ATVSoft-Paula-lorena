@@ -36,3 +36,30 @@ export const ESTADO_LABELS: Record<string, string> = {
   listo: 'Listo',
   error: 'Error',
 }
+
+export type ClaudeApiStatusKind =
+  | 'not_configured'
+  | 'ok'
+  | 'no_balance'
+  | 'invalid_key'
+  | 'permission_denied'
+  | 'rate_limited'
+  | 'unavailable'
+
+export type ClaudeApiStatus = {
+  status: ClaudeApiStatusKind
+  message: string
+  api_key_masked: string | null
+}
+
+export type FathomApiStatusKind =
+  | 'not_configured'
+  | 'ok'
+  | 'invalid_key'
+  | 'unavailable'
+
+export type FathomApiStatus = {
+  status: FathomApiStatusKind
+  message: string
+  api_key_masked: string | null
+}

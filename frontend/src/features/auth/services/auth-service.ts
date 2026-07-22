@@ -92,17 +92,9 @@ export async function logout() {
   window.dispatchEvent(new Event('auth-session-changed'))
 }
 
-export async function changePassword(
-  adminPassword: string,
-  options: { newPassword?: string; newUsername?: string },
-): Promise<AuthResult> {
-  if (!adminPassword.trim()) return { error: 'Clave de admin requerida' }
-  const newPassword = (options.newPassword || '').trim()
-  const newUsername = (options.newUsername || '').trim()
-  if (!newPassword && !newUsername) {
-    return { error: 'Indicá un nuevo usuario y/o una nueva contraseña' }
-  }
-  if (newPassword && newPassword.length < 6) {
+export async function changePassword(currentPassword: string, newPassword: string): Promise<AuthResult> {
+  if (!currentPassword.trim()) return { error: 'Contraseña actual requerida' }
+  if (newPassword.length < 6) {
     return { error: 'La nueva contraseña debe tener al menos 6 caracteres' }
   }
 
@@ -120,9 +112,8 @@ export async function changePassword(
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
     body: JSON.stringify({
-      admin_password: adminPassword,
-      ...(newPassword ? { new_password: newPassword } : {}),
-      ...(newUsername ? { new_username: newUsername } : {}),
+      current_password: currentPassword,
+      new_password: newPassword,
     }),
   })
   const data = (await response.json().catch(() => null)) as LoginResponseBody | null

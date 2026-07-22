@@ -21,7 +21,7 @@ const titles: Record<string, string> = {
   '/programas': 'Programas',
   '/avatares': 'Avatares',
   '/conexiones': 'Conexiones API',
-  '/ajustes/cambiar-contrasenia': 'Usuario y contraseña',
+  '/mi-cuenta': 'Mi cuenta',
   '/ajustes/tasa-refresco': 'Tasa de refresco',
 }
 
@@ -54,6 +54,7 @@ export function Topbar({ onMenuClick }: TopbarProps) {
     '/programas',
     '/avatares',
     '/conexiones',
+    '/mi-cuenta',
     '/team',
     '/team/reportes',
     '/team/historial-reportes',

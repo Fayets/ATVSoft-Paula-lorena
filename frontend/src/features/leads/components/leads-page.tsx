@@ -1364,6 +1364,75 @@ function LeadsTable({
 /** Campos con respuesta larga: en la grilla solo «Abrir» → modal con texto completo. */
 const MODAL_TEXT_CELL_KEYS = ['situacion_actual', 'reto_actual', 'objetivo', 'ingresos_lead'] as const
 
+/** Link editable en grilla: abrir, editar y borrar. */
+function EditableLinkCell({
+  value,
+  onStartEdit,
+  onClear,
+  confirmClear = false,
+}: {
+  value: string
+  onStartEdit: () => void
+  onClear: () => void
+  confirmClear?: boolean
+}) {
+  const trimmed = String(value || '').trim()
+  if (!trimmed) {
+    return (
+      <span
+        onClick={onStartEdit}
+        className="block cursor-pointer text-[12px] text-[var(--text3)] hover:opacity-80"
+      >
+        —
+      </span>
+    )
+  }
+
+  const handleClear = () => {
+    if (confirmClear && !window.confirm('¿Borrar el link de llamada?')) return
+    onClear()
+  }
+
+  return (
+    <div className="flex min-w-0 items-center gap-1">
+      <a
+        href={trimmed}
+        target="_blank"
+        rel="noopener noreferrer"
+        onClick={(e) => e.stopPropagation()}
+        className="min-w-0 truncate text-[12px] text-[var(--accent)] hover:underline"
+        title={trimmed}
+      >
+        ↗ Link
+      </a>
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation()
+          onStartEdit()
+        }}
+        className="shrink-0 text-[11px] text-[var(--text3)] hover:text-[var(--text2)]"
+        title="Editar link"
+        aria-label="Editar link"
+      >
+        ✎
+      </button>
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation()
+          handleClear()
+        }}
+        className="shrink-0 text-[11px] text-[var(--text3)] hover:text-[var(--red)]"
+        title="Borrar link"
+        aria-label="Borrar link"
+      >
+        ×
+      </button>
+    </div>
+  )
+}
+
 function AbrirTextoModalCell({
   text,
   label,
@@ -1640,6 +1709,36 @@ function LeadsTableCell({
         />
       )
     }
+    if (col.type === 'link') {
+      return (
+        <div className="space-y-1">
+          <input
+            autoFocus
+            type="url"
+            defaultValue={String(value ?? '')}
+            placeholder="https://..."
+            onBlur={(e) => {
+              const v = e.target.value
+              onSave(v.trim() === '' ? null : v.trim())
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') (e.target as HTMLInputElement).blur()
+              if (e.key === 'Escape') onCancelEdit()
+            }}
+            className="w-full rounded border border-[var(--accent)] bg-[var(--bg3)] px-2 py-1 text-[12px] text-[var(--text)] outline-none"
+          />
+          {String(value ?? '').trim() ? (
+            <button
+              type="button"
+              onClick={() => onSave(null)}
+              className="text-[11px] text-[var(--red)] hover:underline"
+            >
+              Borrar link
+            </button>
+          ) : null}
+        </div>
+      )
+    }
     return (
       <input
         autoFocus
@@ -1784,7 +1883,17 @@ function LeadsTableCell({
 
   // Link
   if (col.type === 'link') {
-    if (!value) return <span onClick={onStartEdit} className={`${cellClass} text-[var(--text3)]`}>—</span>
+    if (col.editable && !readOnly) {
+      return (
+        <EditableLinkCell
+          value={String(value ?? '')}
+          onStartEdit={onStartEdit}
+          onClear={() => onSave(null)}
+          confirmClear={col.key === 'call_link'}
+        />
+      )
+    }
+    if (!value) return <span className={`${cellClass} text-[var(--text3)]`}>—</span>
     return (
       <a href={String(value)} target="_blank" rel="noopener noreferrer"
         className="text-[12px] text-[var(--accent)] hover:underline inline-flex items-center gap-1">

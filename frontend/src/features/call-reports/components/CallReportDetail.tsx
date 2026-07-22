@@ -1,6 +1,8 @@
 'use client'
 
 import type { CallReport } from '../types'
+import { formatCallReportError } from '../lib/claude-status'
+import { reanalyzeCallReport } from '../services/call-reports-service'
 import { formatIsoDateDdMmYyyy } from '@/shared/lib/format-utils'
 import { downloadCallReport } from '../services/call-reports-service'
 
@@ -8,6 +10,7 @@ type Props = {
   report: CallReport
   onBusy?: (busy: boolean) => void
   onError?: (msg: string) => void
+  onReanalyze?: () => void
 }
 
 function FieldBlock({ label, value }: { label: string; value: string | null | undefined }) {
@@ -30,11 +33,28 @@ function HeaderItem({ label, value }: { label: string; value: string }) {
   )
 }
 
-export function CallReportDetail({ report, onBusy, onError }: Props) {
+export function CallReportDetail({ report, onBusy, onError, onReanalyze }: Props) {
   if (report.estado === 'error') {
     return (
-      <div className="rounded-lg border border-[var(--red)]/30 bg-[var(--red)]/5 p-4 text-[13px] text-[var(--red)]">
-        {report.error_msg || 'Error al analizar la llamada.'}
+      <div className="space-y-3 rounded-lg border border-[var(--red)]/30 bg-[var(--red)]/5 p-4">
+        <p className="text-[13px] text-[var(--red)]">
+          {formatCallReportError(report.error_msg)}
+        </p>
+        <button
+          type="button"
+          className="rounded-md border border-[var(--border)] bg-[var(--bg2)] px-3 py-1.5 text-[12px] text-[var(--text2)] hover:bg-[var(--bg3)]"
+          onClick={() => {
+            onBusy?.(true)
+            void reanalyzeCallReport(report.id)
+              .then(() => onReanalyze?.())
+              .catch((e) =>
+                onError?.(e instanceof Error ? e.message : 'No se pudo reintentar el análisis.'),
+              )
+              .finally(() => onBusy?.(false))
+          }}
+        >
+          Reintentar análisis
+        </button>
       </div>
     )
   }

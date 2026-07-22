@@ -10,6 +10,8 @@ import {
 } from '../services/call-reports-service'
 import type { CallReport } from '../types'
 import { CallReportsTable } from './CallReportsTable'
+import { ClaudeApiStatusBanner } from './ClaudeApiStatusBanner'
+import { FathomApiStatusBanner } from './FathomApiStatusBanner'
 
 const POLL_MS = 5000
 const VIEW_PASSWORD = 'paulalorena'
@@ -258,6 +260,8 @@ export function CallReportsPage() {
           </div>
         )}
       </div>
+      <FathomApiStatusBanner />
+      <ClaudeApiStatusBanner />
       <CallReportsTable
         items={items}
         loading={loading}
@@ -265,6 +269,7 @@ export function CallReportsPage() {
         onToggleRow={toggleRow}
         onToggleAll={toggleAll}
         onError={(msg) => toast(msg)}
+        onRefresh={() => void fetchReports(true)}
       />
     </div>
   )

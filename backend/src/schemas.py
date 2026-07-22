@@ -30,9 +30,8 @@ class AuthMeResponse(BaseModel):
 
 
 class AuthChangePasswordRequest(BaseModel):
-    admin_password: str
-    new_password: str | None = None
-    new_username: str | None = None
+    current_password: str
+    new_password: str
 
 
 class MasterListUpsertRequest(BaseModel):
@@ -713,3 +712,15 @@ class CallReportAnalyzeResponse(BaseModel):
 
 class CallReportBulkIdsRequest(BaseModel):
     ids: list[int] = Field(default_factory=list)
+
+
+class ClaudeApiStatusResponse(BaseModel):
+    status: str
+    message: str
+    api_key_masked: str | None = None
+
+
+class FathomApiStatusResponse(BaseModel):
+    status: str
+    message: str
+    api_key_masked: str | None = None

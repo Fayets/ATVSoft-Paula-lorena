@@ -21,7 +21,11 @@ from src.schemas import (
     CallReportBulkIdsRequest,
     CallReportOut,
     CallReportsListResponse,
+    ClaudeApiStatusResponse,
+    FathomApiStatusResponse,
 )
+from src.services.anthropic_service import get_claude_status_for_user
+from src.services.fathom_service import get_fathom_status_for_user
 from src.services.call_report_service import (
     analyze_call_report,
     delete_call_reports,
@@ -169,6 +173,32 @@ def list_call_reports(
         out = [_to_out(r, names) for r in rows]
 
     return CallReportsListResponse(call_reports=out)
+
+
+@router.get("/claude-status", response_model=ClaudeApiStatusResponse)
+def claude_api_status(
+    user_id: Annotated[str, Depends(require_user_id)],
+) -> ClaudeApiStatusResponse:
+    try:
+        uid = int(user_id)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail="user_id inválido") from e
+
+    result = get_claude_status_for_user(uid)
+    return ClaudeApiStatusResponse(**result)
+
+
+@router.get("/fathom-status", response_model=FathomApiStatusResponse)
+def fathom_api_status(
+    user_id: Annotated[str, Depends(require_user_id)],
+) -> FathomApiStatusResponse:
+    try:
+        uid = int(user_id)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail="user_id inválido") from e
+
+    result = get_fathom_status_for_user(uid)
+    return FathomApiStatusResponse(**result)
 
 
 @router.post("/analyze", response_model=CallReportAnalyzeResponse)

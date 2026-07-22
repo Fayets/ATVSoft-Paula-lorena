@@ -71,7 +71,6 @@ const settingsGroup: NavGroup = {
     { label: 'Programas', href: '/programas' },
     { label: 'Avatares', href: '/avatares' },
     { label: 'Tasa de refresco', href: '/ajustes/tasa-refresco' },
-    { label: 'Cambiar usuario / contraseña', href: '/ajustes/cambiar-contrasenia' },
     { label: 'Conexiones API', href: '/conexiones' },
   ],
 }
@@ -133,20 +132,54 @@ export function Sidebar({ className }: SidebarProps) {
       </nav>
 
       {/* Footer */}
-      <div className="mt-1 border-t border-[var(--border)] px-4 pb-2 pt-2 text-[9px] text-[var(--text3)]">
-        <div className="mb-2 flex items-center justify-between gap-2 text-[11px]">
-          <span className="min-w-0 truncate font-medium text-[var(--text2)]" title={displayName}>
-            {displayName}
-          </span>
-          <button
-            type="button"
-            onClick={onLogout}
-            className="shrink-0 rounded-md border border-[var(--border2)] bg-transparent px-2 py-1 text-[10px] font-medium text-[var(--text3)] transition-all hover:border-[var(--accent)] hover:bg-[var(--accent-faint)] hover:text-[var(--accent)]"
-          >
-            Salir
-          </button>
+      <div className="mt-1 border-t border-[var(--border)] px-4 pb-3 pt-2.5">
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0">
+            <p
+              className="truncate text-[13px] font-medium text-[var(--text2)]"
+              title={displayName}
+            >
+              {displayName}
+            </p>
+            <p className="mt-0.5 text-[10px] text-[var(--text3)]">© 2026 ATV</p>
+          </div>
+          <div className="flex shrink-0 items-center gap-1">
+            <Link
+              href="/mi-cuenta"
+              prefetch={false}
+              aria-label="Mi cuenta"
+              title="Mi cuenta"
+              className={`inline-flex h-6 w-6 items-center justify-center rounded border bg-transparent transition-all ${
+                pathname === '/mi-cuenta'
+                  ? 'border-[var(--accent)] bg-[var(--accent-faint)] text-[var(--accent)]'
+                  : 'border-[var(--accent)] text-[var(--accent)] hover:bg-[var(--accent-faint)]'
+              }`}
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="12"
+                height="12"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden
+              >
+                <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
+                <circle cx="12" cy="12" r="3" />
+              </svg>
+            </Link>
+            <button
+              type="button"
+              onClick={onLogout}
+              className="shrink-0 rounded border border-[var(--accent)] bg-transparent px-1.5 py-0.5 text-[10px] font-medium text-[var(--accent)] transition-all hover:bg-[var(--accent-faint)]"
+            >
+              Salir
+            </button>
+          </div>
         </div>
-        © 2025-2026 ATV
       </div>
     </aside>
   )

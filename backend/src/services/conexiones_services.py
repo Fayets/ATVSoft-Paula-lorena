@@ -3,7 +3,8 @@ from datetime import datetime, timedelta, timezone
 from fastapi import HTTPException
 from pony.orm import ObjectNotFound, db_session
 
-from src.db_query_utils import rows_for_user
+from src.services.anthropic_service import invalidate_claude_status_cache
+from src.services.fathom_service import invalidate_fathom_status_cache
 from src.models import ApiConnection
 from src.schemas import ApiConnectionResponse, ApiConnectionUpsertRequest
 
@@ -67,6 +68,10 @@ class ConexionesServices:
                                 incoming_credentials[key] = previous_credentials[key]
                 existing.credentials = incoming_credentials
                 existing.updated_at = now
+                if platform.lower() == "claude":
+                    invalidate_claude_status_cache(user_id)
+                elif platform.lower() == "fathom":
+                    invalidate_fathom_status_cache(user_id)
                 return self._to_response(existing)
             row = ApiConnection(
                 user_id=user_id,
@@ -86,4 +91,8 @@ class ConexionesServices:
                 ),
                 updated_at=now,
             )
+            if platform.lower() == "claude":
+                invalidate_claude_status_cache(user_id)
+            elif platform.lower() == "fathom":
+                invalidate_fathom_status_cache(user_id)
             return self._to_response(row)

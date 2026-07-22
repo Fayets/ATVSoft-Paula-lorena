@@ -10,6 +10,7 @@ from src.lead_display_utils import lead_display_nombre
 from src.models import ApiConnection
 from src.models import CallReport
 from src.models import Lead as LeadEntity
+from src.services.anthropic_service import normalize_claude_runtime_error
 from src.services.claude_cli import run_claude_analysis
 from src.services.fathom_service import fetch_fathom_meeting
 
@@ -95,7 +96,7 @@ def analyze_call_report(report_id: int) -> None:
             if not row:
                 return
             row.estado = "error"
-            row.error_msg = str(exc)[:2000]
+            row.error_msg = normalize_claude_runtime_error(str(exc))
             row.updated_at = datetime.utcnow()
 
 

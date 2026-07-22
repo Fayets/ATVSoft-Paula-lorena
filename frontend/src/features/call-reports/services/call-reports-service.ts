@@ -1,5 +1,5 @@
 import { apiFetch, backendAuthHeaders } from '@/lib/api'
-import type { CallReport } from '../types'
+import type { CallReport, ClaudeApiStatus, FathomApiStatus } from '../types'
 
 const API_BASE =
   (process.env.NEXT_PUBLIC_BACKEND_URL || '').trim().replace(/\/$/, '') || '/api-backend'
@@ -15,6 +15,42 @@ export async function getCallReports(): Promise<CallReport[]> {
     throw new Error(typeof raw.detail === 'string' ? raw.detail : 'No se pudieron cargar los reportes.')
   }
   return Array.isArray(raw.call_reports) ? raw.call_reports : []
+}
+
+export async function getClaudeApiStatus(): Promise<ClaudeApiStatus> {
+  const res = await apiFetch('/call-reports/claude-status')
+  const raw = (await res.json().catch(() => ({}))) as ClaudeApiStatus & { detail?: string }
+  if (!res.ok) {
+    throw new Error(typeof raw.detail === 'string' ? raw.detail : 'No se pudo verificar Claude.')
+  }
+  return {
+    status: raw.status || 'unavailable',
+    message: raw.message || 'Estado desconocido.',
+    api_key_masked: raw.api_key_masked ?? null,
+  }
+}
+
+export async function getFathomApiStatus(): Promise<FathomApiStatus> {
+  const res = await apiFetch('/call-reports/fathom-status')
+  const raw = (await res.json().catch(() => ({}))) as FathomApiStatus & { detail?: string }
+  if (!res.ok) {
+    throw new Error(typeof raw.detail === 'string' ? raw.detail : 'No se pudo verificar Fathom.')
+  }
+  return {
+    status: raw.status || 'unavailable',
+    message: raw.message || 'Estado desconocido.',
+    api_key_masked: raw.api_key_masked ?? null,
+  }
+}
+
+export async function reanalyzeCallReport(id: string): Promise<void> {
+  const res = await apiFetch(`/call-reports/${encodeURIComponent(id)}/reanalyze`, {
+    method: 'POST',
+  })
+  const raw = (await res.json().catch(() => ({}))) as { detail?: string }
+  if (!res.ok) {
+    throw new Error(typeof raw.detail === 'string' ? raw.detail : 'No se pudo reintentar el análisis.')
+  }
 }
 
 export async function getCallReport(id: string): Promise<CallReport> {

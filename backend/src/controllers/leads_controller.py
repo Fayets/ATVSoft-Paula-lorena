@@ -566,7 +566,15 @@ def patch_lead(
 
     if fathom_to_analyze:
         report_id, created = get_or_create_report(lid, fathom_to_analyze, uid)
-        if created:
+        should_run = created
+        if not created:
+            with db_session:
+                row = CallReportEntity.get(id=report_id)
+                if row is not None and (row.estado or "") in ("error", "pendiente"):
+                    should_run = True
+                    row.estado = "pendiente"
+                    row.error_msg = ""
+        if should_run:
             background.add_task(analyze_call_report, report_id)
 
     return result

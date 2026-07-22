@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import time
 from typing import Any
 
 import httpx
@@ -10,8 +11,11 @@ from decouple import config
 from pony.orm import db_session
 
 from src.models import ApiConnection
+from src.services.anthropic_service import mask_api_key
 
 FATHOM_BASE = "https://api.fathom.ai/external/v1"
+_FATHOM_STATUS_CACHE: dict[int, tuple[float, dict]] = {}
+_FATHOM_STATUS_CACHE_TTL_SEC = 60.0
 
 
 def _norm_url(url: str) -> str:
@@ -35,6 +39,81 @@ def _get_fathom_api_key(user_id: int) -> str:
     if not key:
         raise ValueError("Falta API key de Fathom (Conexiones o FATHOM_API_KEY).")
     return key
+
+
+def check_fathom_api_status(api_key: str) -> dict:
+    key = (api_key or "").strip()
+    if not key:
+        return {
+            "status": "not_configured",
+            "message": "Configurá tu API key de Fathom en Conexiones API.",
+            "api_key_masked": None,
+        }
+
+    masked = mask_api_key(key)
+    try:
+        with httpx.Client(base_url=FATHOM_BASE, timeout=20.0) as client:
+            resp = client.get(
+                "/meetings",
+                headers={"X-Api-Key": key},
+                params={"limit": 1},
+            )
+    except httpx.RequestError as exc:
+        return {
+            "status": "unavailable",
+            "message": f"No se pudo verificar la API key de Fathom: {exc}",
+            "api_key_masked": masked,
+        }
+
+    if resp.status_code == 200:
+        return {
+            "status": "ok",
+            "message": "API key de Fathom activa.",
+            "api_key_masked": masked,
+        }
+    if resp.status_code in (401, 403):
+        return {
+            "status": "invalid_key",
+            "message": "La API key de Fathom no es válida. Revisala en Conexiones API.",
+            "api_key_masked": masked,
+        }
+
+    detail = ""
+    try:
+        payload = resp.json()
+        if isinstance(payload, dict):
+            detail = str(payload.get("message") or payload.get("error") or "").strip()
+    except ValueError:
+        detail = (resp.text or "").strip()[:200]
+    suffix = detail or f"HTTP {resp.status_code}"
+    return {
+        "status": "unavailable",
+        "message": f"No se pudo verificar la API key de Fathom: {suffix}",
+        "api_key_masked": masked,
+    }
+
+
+def get_fathom_status_for_user(user_id: int, *, use_cache: bool = True) -> dict:
+    now = time.time()
+    if use_cache:
+        cached = _FATHOM_STATUS_CACHE.get(user_id)
+        if cached and now - cached[0] < _FATHOM_STATUS_CACHE_TTL_SEC:
+            return cached[1]
+
+    try:
+        api_key = _get_fathom_api_key(user_id)
+    except ValueError:
+        result = check_fathom_api_status("")
+    else:
+        result = check_fathom_api_status(api_key)
+
+    if use_cache:
+        _FATHOM_STATUS_CACHE[user_id] = (now, result)
+    return result
+
+
+def invalidate_fathom_status_cache(user_id: int) -> None:
+    _FATHOM_STATUS_CACHE.pop(user_id, None)
 
 
 def _format_transcript_segments(segments: list) -> str:
