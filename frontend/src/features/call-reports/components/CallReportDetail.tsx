@@ -16,10 +16,51 @@ type Props = {
 function FieldBlock({ label, value }: { label: string; value: string | null | undefined }) {
   const text = (value || '').trim()
   if (!text) return null
+
+  const lines = text.split(/\n/).map((l) => l.trimEnd())
+  const verdict = lines[0]?.trim() || ''
+  const rest = lines.slice(1)
+
   return (
-    <div className="space-y-1">
+    <div className="rounded-lg border border-[var(--border)] bg-[var(--bg2)]/60 px-3 py-2.5 space-y-2">
       <div className="text-[10px] font-semibold uppercase tracking-wide text-[var(--text3)]">{label}</div>
-      <div className="whitespace-pre-wrap text-[13px] leading-relaxed text-[var(--text2)]">{text}</div>
+      {verdict ? (
+        <div className="text-[14px] font-medium leading-snug text-[var(--text)]">{verdict}</div>
+      ) : null}
+      {rest.length > 0 ? (
+        <div className="space-y-1.5">
+          {rest.map((line, i) => {
+            if (!line.trim()) return <div key={i} className="h-1" />
+            const bullet = /^[-•*]\s+/.test(line.trim())
+            const sublabel = /^(superficie|real|evidencia|patrones|mejoras|lead|closer)\s*:/i.test(
+              line.trim(),
+            )
+            if (bullet) {
+              return (
+                <div key={i} className="flex gap-2 text-[13px] leading-relaxed text-[var(--text2)]">
+                  <span className="mt-[7px] h-1 w-1 shrink-0 rounded-full bg-[var(--accent)]" />
+                  <span>{line.trim().replace(/^[-•*]\s+/, '')}</span>
+                </div>
+              )
+            }
+            if (sublabel) {
+              return (
+                <div
+                  key={i}
+                  className="pt-1 text-[11px] font-semibold uppercase tracking-wide text-[var(--text3)]"
+                >
+                  {line.trim()}
+                </div>
+              )
+            }
+            return (
+              <p key={i} className="text-[13px] leading-relaxed text-[var(--text2)]">
+                {line}
+              </p>
+            )
+          })}
+        </div>
+      ) : null}
     </div>
   )
 }

@@ -7,7 +7,7 @@ import { Modal } from '@/shared/components/modal'
 import { useToast } from '@/shared/components/toast'
 import { useAuthUser } from '@/shared/hooks/use-auth-user'
 import { formatCash } from '@/shared/lib/format-utils'
-import { apiFetch } from '@/lib/api'
+import { apiFetch, backendAuthHeaders, formatApiDetail } from '@/lib/api'
 import { AgendaPointPickerModal } from './agenda-point-picker-modal'
 import {
   Lead,
@@ -222,6 +222,7 @@ export function LeadsPage() {
   // Data
   const [leads, setLeads] = useState<Lead[]>([])
   const [loading, setLoading] = useState(true)
+  const [syncing, setSyncing] = useState(false)
 
   const [setterNames, setSetterNames] = useState<string[]>([])
   const [closerNames, setCloserNames] = useState<string[]>([])
@@ -407,6 +408,41 @@ export function LeadsPage() {
       setLoading(false)
     }
   }, [ready, userId, month, toast])
+
+  const syncCalendlyLeads = useCallback(async () => {
+    if (!ready || !userId || syncing) return
+    setSyncing(true)
+    try {
+      const base =
+        (process.env.NEXT_PUBLIC_BACKEND_URL || '').trim().replace(/\/$/, '') || '/api-backend'
+      const res = await fetch(`${base}/calendly/sync`, {
+        method: 'POST',
+        headers: backendAuthHeaders({ 'Content-Type': 'application/json' }),
+        body: JSON.stringify({ month: month || null }),
+      })
+      const data = (await res.json().catch(() => ({}))) as {
+        detail?: unknown
+        error?: string
+        created?: number
+        updated?: number
+        synced?: number
+      }
+      if (!res.ok) {
+        toast(
+          formatApiDetail(data.error ?? data.detail, 'Error al sincronizar Calendly'),
+        )
+        return
+      }
+      toast(
+        `Calendly (${month || 'todos'}): ${data.created ?? 0} creados, ${data.updated ?? 0} actualizados.`,
+      )
+      await fetchLeads()
+    } catch (e) {
+      toast(e instanceof Error ? e.message : 'Error al sincronizar Calendly')
+    } finally {
+      setSyncing(false)
+    }
+  }, [ready, userId, syncing, month, toast, fetchLeads])
 
   const loadAgendaLookups = useCallback(async () => {
     if (!ready || !userId) return
@@ -877,6 +913,30 @@ export function LeadsPage() {
               className="rounded-lg border border-[var(--border2)] bg-[var(--bg3)] pl-8 pr-3 py-1.5 text-[12px] text-[var(--text)] outline-none w-48 focus:border-[var(--text3)] transition-colors"
             />
           </div>
+
+          <button
+            type="button"
+            disabled={syncing || !ready || !userId}
+            onClick={() => void syncCalendlyLeads()}
+            title="Forzar sync de Calendly ahora (también corre automático según Ajustes → Tasa de refresco)"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--border2)] bg-[var(--bg3)] px-3 py-1.5 text-[12px] font-medium text-[var(--text2)] transition-colors hover:bg-[var(--nav-hover)] hover:text-[var(--text)] disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <svg
+              className={`h-3.5 w-3.5 ${syncing ? 'animate-spin' : ''}`}
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+              aria-hidden
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+              />
+            </svg>
+            {syncing ? 'Sincronizando…' : 'Sincronizar'}
+          </button>
 
           <MonthSelector month={month} options={options} onChange={setMonth} />
         </div>
