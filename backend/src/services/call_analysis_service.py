@@ -16,7 +16,8 @@ from src.services.anthropic_service import (
 # Haiku: extracción estructurada a ~1/3 del costo de Sonnet.
 ANALYSIS_MODEL = "claude-haiku-4-5-20251001"
 MAX_TRANSCRIPT_CHARS = 30_000
-MAX_OUTPUT_TOKENS = 2500
+# Respuestas verbosas truncaban el JSON a 2500; 8192 deja margen.
+MAX_OUTPUT_TOKENS = 8192
 
 ANALYSIS_RESULT_KEYS = (
     "nivel_dolor",
@@ -34,33 +35,35 @@ ANALYSIS_RESULT_KEYS = (
 ANALYSIS_SYSTEM = """Sos un coach de closers de ventas de alto ticket. Analizás transcripciones de llamadas
 (formato "Hablante: texto") para calificar al lead y mejorar al closer.
 
-Reglas:
-- Respondé SOLO JSON válido (sin markdown, sin backticks, sin prosa fuera del JSON).
-- Español claro y concreto. Usá citas textuales del lead entre comillas cuando aporte.
-- No inventes: si no hay evidencia, escribí "No se evidencia en la llamada".
-- Si la llamada cerró, en razon_real_no_cerrar poné "Cerró" y la razón real del sí.
+Reglas OBLIGATORIAS:
+- Respondé ÚNICAMENTE un objeto JSON válido. Prohibido markdown, fences (```), negritas (**), títulos o prosa fuera del JSON.
+- Sé completo y útil: desarrollá cada campo con la evidencia necesaria (citas, momentos, matices).
+- No te vayas de tema: nada de relleno, digresiones ni teoría genérica de ventas. Solo lo que se ve en ESTA llamada.
+- No inventes: si no hay evidencia, usá "No se evidencia en la llamada".
+- Si la llamada cerró, en razon_real_no_cerrar: "Cerró" + por qué sí.
 - Priorizá señales de los primeros ~10 minutos para capacidad_decision.
+- Escapá comillas internas con \\" dentro de los strings JSON.
 """
 
-ANALYSIS_USER_TEMPLATE = """Analizá la transcripción en DOS bloques (todo en un solo JSON).
+ANALYSIS_USER_TEMPLATE = """Analizá la transcripción. Devolvé UN solo JSON con estas 10 claves (strings).
 
-## BLOQUE 1 — Calificación del lead
-1. nivel_dolor: urgencia real del problema (no solo si lo tiene). Sacá el dolor profundo, no la versión superficial. Indicá nivel (bajo/medio/alto) + evidencia.
-2. capacidad_decision: ¿puede decidir solo/a o necesita consultar pareja/socio? Detectalo temprano (ideal: primeros 10 min).
-3. capacidad_economica: señales de poder de pago (qué invierte hoy, compras previas, herramientas que usa). ¿El precio será objeción real o de percepción de valor?
-4. fit_real: ¿el programa puede ayudarlo de verdad? Si está fuera del ICP, decilo: mejor no cerrar (malos resultados / refunds).
-5. objecion_diagnostico: objeción de superficie vs objeción real. El precio casi nunca es el problema; suele ser falta de confianza o de creer que funcionará en su caso. Cavá debajo.
+BLOQUE 1 — Calificación:
+1. nivel_dolor: urgencia real (bajo/medio/alto) + dolor profundo (no superficial), con evidencia de la llamada.
+2. capacidad_decision: ¿decide solo/a o consulta pareja/socio? Detectalo temprano (ideal: primeros 10 min).
+3. capacidad_economica: señales de pago (inversiones, compras, tools). ¿Precio = objeción real o de percepción de valor?
+4. fit_real: ¿el programa puede ayudarlo? Si está fuera del ICP, decilo (mejor no cerrar).
+5. objecion_diagnostico: superficie vs real (el precio casi nunca es el problema; suele ser confianza / "¿funcionará para mí?").
 
-## BLOQUE 2 — Coaching de la llamada (complementario)
-6. cambio_energia: ¿en qué momento cambió la energía del lead? (timestamp aproximado o cita + qué pasó).
+BLOQUE 2 — Coaching:
+6. cambio_energia: cuándo cambió la energía del lead (momento/cita + qué pasó).
 7. objecion_no_manejada: qué objeción no se manejó bien (o se esquivó).
-8. razon_real_no_cerrar: razón real diagnosticada de no cerrar (no la que dio el lead). Si cerró: "Cerró" + por qué sí.
+8. razon_real_no_cerrar: razón diagnosticada (no la que dio el lead). Si cerró: "Cerró" + por qué.
 
-## Extra (trazabilidad y mejora)
-9. compromisos_prometidos: qué se prometió en la llamada (entregables, fechas, condiciones, follow-ups).
-10. patrones_y_mejoras: patrones, objeciones recurrentes y 2-4 puntos de mejora concretos para el closer.
+Extra:
+9. compromisos_prometidos: promesas, entregables, fechas, condiciones, follow-ups.
+10. patrones_y_mejoras: patrones/objeciones recurrentes + puntos concretos de mejora para el closer.
 
-JSON EXACTO (todas las claves, strings):
+Formato (sin nada alrededor):
 {{"nivel_dolor":"...","capacidad_decision":"...","capacidad_economica":"...","fit_real":"...","objecion_diagnostico":"...","cambio_energia":"...","objecion_no_manejada":"...","razon_real_no_cerrar":"...","compromisos_prometidos":"...","patrones_y_mejoras":"..."}}
 
 --- TRANSCRIPCIÓN ---
@@ -73,7 +76,6 @@ def _truncate_transcript(text: str, max_chars: int = MAX_TRANSCRIPT_CHARS) -> st
     raw = (text or "").strip()
     if len(raw) <= max_chars:
         return raw
-    # Prioriza inicio (calificación temprana) + cierre (objeciones / ask).
     head = max_chars * 2 // 3
     tail = max_chars - head - 80
     return (
@@ -83,15 +85,65 @@ def _truncate_transcript(text: str, max_chars: int = MAX_TRANSCRIPT_CHARS) -> st
     )
 
 
+def _strip_code_fences(text: str) -> str:
+    t = (text or "").strip()
+    t = re.sub(r"^```(?:json)?\s*", "", t, flags=re.IGNORECASE)
+    t = re.sub(r"\s*```\s*$", "", t)
+    # A veces el modelo envuelve solo el bloque interior.
+    if "```" in t:
+        m = re.search(r"```(?:json)?\s*([\s\S]*?)\s*```", t, flags=re.IGNORECASE)
+        if m:
+            t = m.group(1).strip()
+    return t.strip()
+
+
+def _unescape_json_string(fragment: str) -> str:
+    try:
+        return json.loads(f'"{fragment}"')
+    except json.JSONDecodeError:
+        return (
+            fragment.replace("\\n", "\n")
+            .replace("\\t", "\t")
+            .replace('\\"', '"')
+            .replace("\\\\", "\\")
+        )
+
+
+def _extract_fields_regex(text: str) -> dict[str, str]:
+    """Recupera campos aunque el JSON esté truncado o mal cerrado."""
+    out: dict[str, str] = {}
+    for key in ANALYSIS_RESULT_KEYS:
+        m = re.search(
+            rf'"{re.escape(key)}"\s*:\s*"((?:\\.|[^"\\])*)"',
+            text,
+        )
+        if m:
+            out[key] = _unescape_json_string(m.group(1)).strip()
+            continue
+        # Campo abierto sin comilla de cierre (truncado por max_tokens).
+        m2 = re.search(rf'"{re.escape(key)}"\s*:\s*"(.*)\Z', text, flags=re.DOTALL)
+        if m2:
+            raw_val = m2.group(1).rstrip().rstrip('"').rstrip(",")
+            out[key] = _unescape_json_string(raw_val).strip()
+    return out
+
+
 def _parse_json_lenient(raw: str) -> dict:
-    text = (raw or "").strip()
-    if text.startswith("```"):
-        text = re.sub(r"^```(?:json)?\s*", "", text)
-        text = re.sub(r"\s*```$", "", text)
+    text = _strip_code_fences(raw)
     start, end = text.find("{"), text.rfind("}")
-    if start < 0 or end < 0 or end <= start:
-        raise ValueError("Claude no devolvió JSON válido.")
-    return json.loads(text[start : end + 1])
+    if start >= 0 and end > start:
+        chunk = text[start : end + 1]
+        try:
+            parsed = json.loads(chunk)
+            if isinstance(parsed, dict):
+                return parsed
+        except json.JSONDecodeError:
+            pass
+
+    partial = _extract_fields_regex(text if start < 0 else text[start:])
+    if partial:
+        return partial
+    raise ValueError("Claude no devolvió JSON válido.")
 
 
 def _empty_result() -> dict[str, str]:
@@ -161,11 +213,17 @@ def run_call_analysis(transcript_text: str, api_key: str) -> dict[str, str]:
     try:
         parsed = _parse_json_lenient(raw_text)
     except (ValueError, json.JSONDecodeError) as exc:
+        stop = ""
+        if isinstance(payload, dict):
+            stop = str(payload.get("stop_reason") or "")
+        hint = " (respuesta truncada por límite de tokens)" if stop == "max_tokens" else ""
         raise RuntimeError(
-            f"Claude no devolvió la ficha JSON: {raw_text[:800]}"
+            f"Claude no devolvió la ficha JSON{hint}: {raw_text[:500]}"
         ) from exc
 
     out = _empty_result()
     for key_name in ANALYSIS_RESULT_KEYS:
         out[key_name] = str(parsed.get(key_name) or "").strip()
+    if not any(out.values()):
+        raise RuntimeError(f"Claude no devolvió campos útiles: {raw_text[:500]}")
     return out
