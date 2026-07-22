@@ -11,7 +11,7 @@ from src.models import ApiConnection
 from src.models import CallReport
 from src.models import Lead as LeadEntity
 from src.services.anthropic_service import normalize_claude_runtime_error
-from src.services.claude_cli import run_claude_analysis
+from src.services.call_analysis_service import ANALYSIS_RESULT_KEYS, run_call_analysis
 from src.services.fathom_service import fetch_fathom_meeting
 
 
@@ -76,18 +76,18 @@ def analyze_call_report(report_id: int) -> None:
 
     try:
         meeting = fetch_fathom_meeting(fathom_url, user_id)
-        analysis = run_claude_analysis(meeting.get("transcript") or "", api_key=claude_api_key or None)
+        analysis = run_call_analysis(
+            meeting.get("transcript") or "",
+            api_key=claude_api_key,
+        )
         with db_session:
             row = CallReport.get(id=report_id)
             if not row:
                 return
             row.participantes = meeting.get("participantes") or ""
             row.motivo_reunion = meeting.get("motivo_reunion") or ""
-            row.resumen = analysis.get("resumen") or ""
-            row.hubo_objeciones = analysis.get("hubo_objeciones") or ""
-            row.tipo_perfil = analysis.get("tipo_perfil") or ""
-            row.ingresos_estimados = analysis.get("ingresos_estimados") or ""
-            row.situacion_y_deseo = analysis.get("situacion_y_deseo") or ""
+            for key in ANALYSIS_RESULT_KEYS:
+                setattr(row, key, analysis.get(key) or "")
             row.estado = "listo"
             row.updated_at = datetime.utcnow()
     except Exception as exc:

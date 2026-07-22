@@ -81,6 +81,23 @@ def init_db() -> None:
             ADD COLUMN IF NOT EXISTS calendly_interval_minutes INTEGER NOT NULL DEFAULT 360
         """)
 
+        for col in [
+            "nivel_dolor",
+            "capacidad_decision",
+            "capacidad_economica",
+            "fit_real",
+            "objecion_diagnostico",
+            "cambio_energia",
+            "objecion_no_manejada",
+            "razon_real_no_cerrar",
+            "compromisos_prometidos",
+            "patrones_y_mejoras",
+        ]:
+            db.execute(f"""
+                ALTER TABLE call_report
+                ADD COLUMN IF NOT EXISTS {col} TEXT DEFAULT ''
+            """)
+
     db.create_tables(check_tables=True)
 
     print(f"[db] Base de datos lista ({time.time() - t0:.1f}s)")

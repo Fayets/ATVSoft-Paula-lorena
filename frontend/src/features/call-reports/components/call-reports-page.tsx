@@ -166,21 +166,18 @@ export function CallReportsPage() {
     })
   }, [items])
 
-  const runBulkDownload = useCallback(
-    async (format: 'pdf' | 'txt') => {
-      if (selectedList.length === 0) return
-      setBusy(true)
-      try {
-        await bulkDownloadCallReports(selectedList, format)
-        toast(`Descarga ${format.toUpperCase()} lista (${selectedList.length}).`)
-      } catch (e) {
-        toast(e instanceof Error ? e.message : 'Error al descargar.')
-      } finally {
-        setBusy(false)
-      }
-    },
-    [selectedList, toast],
-  )
+  const runBulkDownload = useCallback(async () => {
+    if (selectedList.length === 0) return
+    setBusy(true)
+    try {
+      await bulkDownloadCallReports(selectedList)
+      toast(`Descarga PDF lista (${selectedList.length}).`)
+    } catch (e) {
+      toast(e instanceof Error ? e.message : 'Error al descargar.')
+    } finally {
+      setBusy(false)
+    }
+  }, [selectedList, toast])
 
   const runBulkDelete = useCallback(async () => {
     if (selectedList.length === 0) return
@@ -235,17 +232,9 @@ export function CallReportsPage() {
               type="button"
               disabled={busy}
               className="rounded-md border border-[var(--border)] bg-[var(--bg2)] px-3 py-1.5 text-[12px] text-[var(--text2)] hover:bg-[var(--bg3)] disabled:opacity-50"
-              onClick={() => void runBulkDownload('pdf')}
+              onClick={() => void runBulkDownload()}
             >
               Descargar PDF
-            </button>
-            <button
-              type="button"
-              disabled={busy}
-              className="rounded-md border border-[var(--border)] bg-[var(--bg2)] px-3 py-1.5 text-[12px] text-[var(--text2)] hover:bg-[var(--bg3)] disabled:opacity-50"
-              onClick={() => void runBulkDownload('txt')}
-            >
-              Descargar TXT
             </button>
             <button
               type="button"

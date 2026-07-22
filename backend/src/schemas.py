@@ -682,6 +682,17 @@ class CallReportOut(BaseModel):
     error_msg: str | None = None
     participantes: str | None = None
     motivo_reunion: str | None = None
+    nivel_dolor: str | None = None
+    capacidad_decision: str | None = None
+    capacidad_economica: str | None = None
+    fit_real: str | None = None
+    objecion_diagnostico: str | None = None
+    cambio_energia: str | None = None
+    objecion_no_manejada: str | None = None
+    razon_real_no_cerrar: str | None = None
+    compromisos_prometidos: str | None = None
+    patrones_y_mejoras: str | None = None
+    # Legacy (reportes viejos)
     resumen: str | None = None
     hubo_objeciones: str | None = None
     tipo_perfil: str | None = None

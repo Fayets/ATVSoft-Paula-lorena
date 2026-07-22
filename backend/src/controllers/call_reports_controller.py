@@ -2,13 +2,12 @@ from datetime import datetime, timezone
 from typing import Annotated
 from urllib.parse import quote
 
-from fastapi import APIRouter, BackgroundTasks, Depends, Header, HTTPException, Query
+from fastapi import APIRouter, BackgroundTasks, Depends, Header, HTTPException
 from fastapi.responses import Response
 from pony.orm import ObjectNotFound, db_session
 
 from src.call_reports_export import (
     build_call_reports_pdf,
-    build_call_reports_txt,
     download_filename_for_reports,
     report_as_dict,
 )
@@ -98,6 +97,16 @@ def _to_out(row: CallReportEntity, live_names: dict[int, str]) -> CallReportOut:
         error_msg=(row.error_msg or "").strip() or None,
         participantes=(row.participantes or "").strip() or None,
         motivo_reunion=(row.motivo_reunion or "").strip() or None,
+        nivel_dolor=(getattr(row, "nivel_dolor", None) or "").strip() or None,
+        capacidad_decision=(getattr(row, "capacidad_decision", None) or "").strip() or None,
+        capacidad_economica=(getattr(row, "capacidad_economica", None) or "").strip() or None,
+        fit_real=(getattr(row, "fit_real", None) or "").strip() or None,
+        objecion_diagnostico=(getattr(row, "objecion_diagnostico", None) or "").strip() or None,
+        cambio_energia=(getattr(row, "cambio_energia", None) or "").strip() or None,
+        objecion_no_manejada=(getattr(row, "objecion_no_manejada", None) or "").strip() or None,
+        razon_real_no_cerrar=(getattr(row, "razon_real_no_cerrar", None) or "").strip() or None,
+        compromisos_prometidos=(getattr(row, "compromisos_prometidos", None) or "").strip() or None,
+        patrones_y_mejoras=(getattr(row, "patrones_y_mejoras", None) or "").strip() or None,
         resumen=(row.resumen or "").strip() or None,
         hubo_objeciones=(row.hubo_objeciones or "").strip() or None,
         tipo_perfil=(row.tipo_perfil or "").strip() or None,
@@ -140,12 +149,25 @@ def _export_payloads(uid: int, ids: list[int]) -> list[dict[str, str]]:
             tmp.fathom_url = row.fathom_url
             tmp.participantes = row.participantes
             tmp.motivo_reunion = row.motivo_reunion
-            tmp.resumen = row.resumen
-            tmp.closer_report = row.closer_report
-            tmp.hubo_objeciones = row.hubo_objeciones
-            tmp.tipo_perfil = row.tipo_perfil
-            tmp.ingresos_estimados = row.ingresos_estimados
-            tmp.situacion_y_deseo = row.situacion_y_deseo
+            for key in (
+                "nivel_dolor",
+                "capacidad_decision",
+                "capacidad_economica",
+                "fit_real",
+                "objecion_diagnostico",
+                "cambio_energia",
+                "objecion_no_manejada",
+                "razon_real_no_cerrar",
+                "compromisos_prometidos",
+                "patrones_y_mejoras",
+                "resumen",
+                "closer_report",
+                "hubo_objeciones",
+                "tipo_perfil",
+                "ingresos_estimados",
+                "situacion_y_deseo",
+            ):
+                setattr(tmp, key, getattr(row, key, None) or "")
             payloads.append(report_as_dict(tmp, _dt_iso(row.created_at) or ""))
         return payloads
 
@@ -266,7 +288,6 @@ def bulk_delete_call_reports(
 def bulk_download_call_reports(
     body: CallReportBulkIdsRequest,
     user_id: Annotated[str, Depends(require_user_id)],
-    format: Annotated[str, Query()] = "txt",
 ) -> Response:
     try:
         uid = int(user_id)
@@ -276,28 +297,19 @@ def bulk_download_call_reports(
     if not ids:
         raise HTTPException(status_code=400, detail="ids vacío.")
 
-    fmt = (format or "txt").strip().lower()
-    if fmt not in ("txt", "pdf"):
-        raise HTTPException(status_code=400, detail="format debe ser txt o pdf.")
-
     payloads = _export_payloads(uid, ids)
-    filename = download_filename_for_reports(payloads, fmt)
-    if fmt == "txt":
-        content = build_call_reports_txt(payloads).encode("utf-8")
-        media = "text/plain; charset=utf-8"
-    else:
-        try:
-            content = build_call_reports_pdf(payloads)
-        except ImportError as e:
-            raise HTTPException(
-                status_code=500,
-                detail="Falta fpdf2 en el backend (pip install fpdf2).",
-            ) from e
-        media = "application/pdf"
+    filename = download_filename_for_reports(payloads, "pdf")
+    try:
+        content = build_call_reports_pdf(payloads)
+    except ImportError as e:
+        raise HTTPException(
+            status_code=500,
+            detail="Falta fpdf2 en el backend (pip install fpdf2).",
+        ) from e
 
     return Response(
         content=content,
-        media_type=media,
+        media_type="application/pdf",
         headers={
             "Content-Disposition": f"attachment; filename*=UTF-8''{quote(filename)}",
         },
@@ -374,7 +386,6 @@ def delete_call_report(
 def download_call_report(
     report_id: str,
     user_id: Annotated[str, Depends(require_user_id)],
-    format: Annotated[str, Query()] = "txt",
 ) -> Response:
     try:
         rid = int(report_id)
@@ -382,28 +393,19 @@ def download_call_report(
     except ValueError as e:
         raise HTTPException(status_code=400, detail="report_id o user_id inválido") from e
 
-    fmt = (format or "txt").strip().lower()
-    if fmt not in ("txt", "pdf"):
-        raise HTTPException(status_code=400, detail="format debe ser txt o pdf.")
-
     payloads = _export_payloads(uid, [rid])
-    filename = download_filename_for_reports(payloads, fmt)
-    if fmt == "txt":
-        body = build_call_reports_txt(payloads).encode("utf-8")
-        media = "text/plain; charset=utf-8"
-    else:
-        try:
-            body = build_call_reports_pdf(payloads)
-        except ImportError as e:
-            raise HTTPException(
-                status_code=500,
-                detail="Falta fpdf2 en el backend (pip install fpdf2).",
-            ) from e
-        media = "application/pdf"
+    filename = download_filename_for_reports(payloads, "pdf")
+    try:
+        body = build_call_reports_pdf(payloads)
+    except ImportError as e:
+        raise HTTPException(
+            status_code=500,
+            detail="Falta fpdf2 en el backend (pip install fpdf2).",
+        ) from e
 
     return Response(
         content=body,
-        media_type=media,
+        media_type="application/pdf",
         headers={
             "Content-Disposition": f"attachment; filename*=UTF-8''{quote(filename)}",
         },

@@ -9,6 +9,17 @@ export type CallReport = {
   error_msg: string | null
   participantes: string | null
   motivo_reunion: string | null
+  nivel_dolor: string | null
+  capacidad_decision: string | null
+  capacidad_economica: string | null
+  fit_real: string | null
+  objecion_diagnostico: string | null
+  cambio_energia: string | null
+  objecion_no_manejada: string | null
+  razon_real_no_cerrar: string | null
+  compromisos_prometidos: string | null
+  patrones_y_mejoras: string | null
+  /** Legacy — reportes anteriores al formato calificación/coaching */
   resumen: string | null
   hubo_objeciones: string | null
   tipo_perfil: string | null

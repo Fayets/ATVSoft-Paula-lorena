@@ -108,21 +108,21 @@ async function downloadBlob(path: string, init?: RequestInit, fallbackName = 're
   URL.revokeObjectURL(url)
 }
 
-export async function downloadCallReport(id: string, format: 'pdf' | 'txt'): Promise<void> {
+export async function downloadCallReport(id: string): Promise<void> {
   await downloadBlob(
-    `/call-reports/${encodeURIComponent(id)}/download?format=${format}`,
+    `/call-reports/${encodeURIComponent(id)}/download`,
     { method: 'GET' },
-    `reporte_(Sin nombre).${format}`,
+    'reporte_(Sin nombre).pdf',
   )
 }
 
-export async function bulkDownloadCallReports(ids: string[], format: 'pdf' | 'txt'): Promise<void> {
+export async function bulkDownloadCallReports(ids: string[]): Promise<void> {
   await downloadBlob(
-    `/call-reports/bulk-download?format=${format}`,
+    `/call-reports/bulk-download`,
     {
       method: 'POST',
       body: JSON.stringify({ ids: ids.map((id) => Number(id)).filter((n) => Number.isFinite(n)) }),
     },
-    `reporte_(Sin nombre).${format}`,
+    'reporte_(Sin nombre).pdf',
   )
 }
