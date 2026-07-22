@@ -6,6 +6,7 @@ import { backendAuthHeaders } from '@/lib/api'
 import { MonthSelector } from '@/shared/components/month-selector'
 import { useMonth } from '@/shared/hooks/use-month'
 import type { ConnectionPlatform } from './connection-platforms'
+import { ClaudeSaldoHint } from './claude-saldo-hint'
 
 export type ConnectionRow = {
   platform: string
@@ -71,6 +72,7 @@ function ConnectionCardInner({
   const [calendlyWebhookInfo, setCalendlyWebhookInfo] = useState<CalendlyWebhookInfo | null>(null)
   const [syncing, setSyncing] = useState(false)
   const [syncStatus, setSyncStatus] = useState('')
+  const [claudeStatusRefresh, setClaudeStatusRefresh] = useState(0)
   const [autoSyncInfo, setAutoSyncInfo] = useState<{
     interval_hours: number
     interval_minutes?: number
@@ -163,6 +165,9 @@ function ConnectionCardInner({
       try {
         await onSave(payload)
         setStatus('success')
+        if (platform.key === 'claude') {
+          setClaudeStatusRefresh((n) => n + 1)
+        }
         setTimeout(() => setStatus('idle'), 2000)
       } catch (e) {
         setStatus('error')
@@ -621,6 +626,9 @@ function ConnectionCardInner({
         <div className="min-w-0 flex-1">
           <div className="text-[14px] font-semibold">{platform.label}</div>
           <div className="text-[12px] text-[var(--text3)]">{platform.subtitle}</div>
+          {platform.key === 'claude' && isConnected ? (
+            <ClaudeSaldoHint refreshKey={claudeStatusRefresh} />
+          ) : null}
         </div>
         <div className="flex flex-shrink-0 items-center gap-2">
           {platform.infoOnly ? (

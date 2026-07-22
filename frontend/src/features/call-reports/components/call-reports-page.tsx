@@ -10,8 +10,6 @@ import {
 } from '../services/call-reports-service'
 import type { CallReport } from '../types'
 import { CallReportsTable } from './CallReportsTable'
-import { ClaudeApiStatusBanner } from './ClaudeApiStatusBanner'
-import { FathomApiStatusBanner } from './FathomApiStatusBanner'
 
 const POLL_MS = 5000
 const VIEW_PASSWORD = 'paulalorena'
@@ -227,7 +225,7 @@ export function CallReportsPage() {
         <div>
           <h2 className="text-lg font-bold tracking-tight">Reporte calls</h2>
           <p className="mt-1 text-[12px] text-[var(--text3)]">
-            Análisis automático de llamadas Fathom. Se generan al pegar el link en Leads.
+            Análisis automático al pegar el link de Fathom en Leads.
           </p>
         </div>
         {selectedList.length > 0 && (
@@ -260,8 +258,6 @@ export function CallReportsPage() {
           </div>
         )}
       </div>
-      <FathomApiStatusBanner />
-      <ClaudeApiStatusBanner />
       <CallReportsTable
         items={items}
         loading={loading}

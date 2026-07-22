@@ -114,23 +114,6 @@ const PLATFORMS: ConnectionPlatform[] = [
     },
   },
   {
-    key: 'fathom',
-    label: 'Fathom',
-    icon: '🎙',
-    subtitle: 'Transcripciones para Reporte calls',
-    fields: [
-      { key: 'api_key', label: 'API Key de Fathom', placeholder: 'fathom_...', type: 'password' },
-    ],
-    guide: {
-      title: 'Cómo configurar Fathom',
-      steps: [
-        'En Fathom → Settings → API, generá una API Key',
-        'Usá la key de la misma cuenta que graba las llamadas',
-        'Pegá el link de Fathom en Leads → Link de llamada para generar el reporte',
-      ],
-    },
-  },
-  {
     key: 'claude',
     label: 'Claude (Anthropic)',
     icon: '🧠',
@@ -152,7 +135,7 @@ const PLATFORMS: ConnectionPlatform[] = [
 ]
 
 const SETUP_ORDER = ['instagram', 'manychat', 'calendly', 'youtube'] as const
-const APP_ORDER = ['calendly', 'ghl', 'manychat', 'instagram', 'youtube', 'fathom', 'claude'] as const
+const APP_ORDER = ['calendly', 'ghl', 'manychat', 'instagram', 'youtube', 'claude'] as const
 
 function pick(order: readonly string[]): ConnectionPlatform[] {
   const map = new Map(PLATFORMS.map((p) => [p.key, p]))

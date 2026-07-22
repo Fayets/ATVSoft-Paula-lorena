@@ -4,8 +4,14 @@ export function formatCallReportError(message: string | null | undefined): strin
   const text = (message || '').trim()
   if (!text) return 'Error al analizar la llamada.'
   const lower = text.toLowerCase()
-  if (lower.includes('falta api key de fathom')) {
-    return 'Falta API key de Fathom. Configurala en Conexiones API → Fathom.'
+  if (lower.includes('no es público') || lower.includes('sign-in') || lower.includes('login')) {
+    return 'El link de Fathom no es público. Compartilo con acceso externo (sin pedir login).'
+  }
+  if (lower.includes('transcripción vacía') || lower.includes('no se pudo extraer la transcripción')) {
+    return 'No se pudo leer la transcripción de ese link. Verificá que la grabación esté lista en Fathom.'
+  }
+  if (lower.includes('url inválida') && lower.includes('fathom')) {
+    return 'Pegá un link válido de fathom.video/share/... en Link de llamada.'
   }
   if (
     lower.includes('billing_error') ||

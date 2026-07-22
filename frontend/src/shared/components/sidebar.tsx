@@ -149,10 +149,10 @@ export function Sidebar({ className }: SidebarProps) {
               prefetch={false}
               aria-label="Mi cuenta"
               title="Mi cuenta"
-              className={`inline-flex h-6 w-6 items-center justify-center rounded border bg-transparent transition-all ${
+              className={`inline-flex h-6 w-6 items-center justify-center rounded bg-transparent transition-all ${
                 pathname === '/mi-cuenta'
-                  ? 'border-[var(--accent)] bg-[var(--accent-faint)] text-[var(--accent)]'
-                  : 'border-[var(--accent)] text-[var(--accent)] hover:bg-[var(--accent-faint)]'
+                  ? 'bg-[var(--accent-faint)] text-[var(--accent)]'
+                  : 'text-[var(--accent)] hover:bg-[var(--accent-faint)]'
               }`}
             >
               <svg
@@ -174,7 +174,7 @@ export function Sidebar({ className }: SidebarProps) {
             <button
               type="button"
               onClick={onLogout}
-              className="shrink-0 rounded border border-[var(--accent)] bg-transparent px-1.5 py-0.5 text-[10px] font-medium text-[var(--accent)] transition-all hover:bg-[var(--accent-faint)]"
+              className="shrink-0 rounded bg-transparent px-1.5 py-0.5 text-[10px] font-medium text-[var(--accent)] transition-all hover:bg-[var(--accent-faint)]"
             >
               Salir
             </button>
