@@ -1,18 +1,18 @@
-# Reverse proxy para ATV Paula — https://paula.atvos.io
-# Docker: backend :8010 · frontend :3010
+# Reverse proxy — plantilla por instancia (https://cliente.atvos.io)
+# Puertos host: deben coincidir con BACKEND_PORT y FRONTEND_PORT del .env en la raíz del repo
+# (valores por defecto en .env.example: 8000 backend · 3000 frontend).
 #
-# Opción A (recomendada con NEXT_PUBLIC_BACKEND_URL vacío):
-#   /api-backend/* y /media/* pueden ir al frontend (Next reescribe al backend)
-#   o, más robusto, Nginx los manda directo al backend (abajo).
+# PUBLIC_BACKEND_URL en .env debe ser https://cliente.atvos.io/api (mismo prefijo /api que abajo).
+# Nginx reenvía /api/* al backend (sin el prefijo) y /media/* directo al backend.
 
 server {
     listen 80;
-    server_name paula.atvos.io;
+    server_name cliente.atvos.io;
     # return 301 https://$host$request_uri;
 
-    # API same-origin: /api-backend/auth/login → backend /auth/login
-    location /api-backend/ {
-        proxy_pass http://127.0.0.1:8010/;
+    # API: /api/conexiones → backend /conexiones · /api/api/leads → backend /api/leads
+    location /api/ {
+        proxy_pass http://127.0.0.1:8000/;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-Proto $scheme;
@@ -20,14 +20,14 @@ server {
     }
 
     location /media/ {
-        proxy_pass http://127.0.0.1:8010/media/;
+        proxy_pass http://127.0.0.1:8000/media/;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-Proto $scheme;
     }
 
     location / {
-        proxy_pass http://127.0.0.1:3010;
+        proxy_pass http://127.0.0.1:3000;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-Proto $scheme;

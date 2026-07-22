@@ -23,5 +23,6 @@ backend/media/logo/*
 !backend/media/logo/.gitkeep
 
 # IDE / logs
+.env
 .env.local
 *.log
