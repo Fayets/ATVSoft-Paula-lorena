@@ -70,6 +70,8 @@ export type Lead = {
 export type ColumnDef = {
   key: string
   label: string
+  /** Tooltip del header (pregunta completa del form, etc.). */
+  title?: string
   width: number
   type: 'text' | 'number' | 'date' | 'select' | 'badge' | 'link' | 'currency'
   editable?: boolean
@@ -227,7 +229,7 @@ export function buildColumns(
     { key: 'call_link', label: 'Link de llamada', width: 130, type: 'link', editable: true, defaultVisible: true },
     { key: 'dolores_llamada', label: 'Dolores llamada', width: 200, type: 'text', editable: true, defaultVisible: false },
     { key: 'razon_compra', label: 'Razón compra', width: 100, type: 'text', editable: true, defaultVisible: false },
-    { key: 'objetivo', label: 'Objetivo', width: 140, type: 'text', editable: true, defaultVisible: true },
+    { key: 'objetivo', label: 'Disponibilidad', title: '¿Tienes mínimo una hora al día para invertirle a la mentoría?', width: 140, type: 'text', editable: true, defaultVisible: true },
     { key: 'reto_actual', label: 'Reto actual', width: 120, type: 'text', editable: true, defaultVisible: true },
     { key: 'ingresos_lead', label: 'Ingresos', width: 160, type: 'text', editable: false, defaultVisible: true },
     { key: 'ingresos_mensuales', label: 'Ingresos lead ($)', width: 130, type: 'currency', editable: true, defaultVisible: false },

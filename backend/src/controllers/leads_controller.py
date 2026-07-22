@@ -329,7 +329,7 @@ def list_leads(
                 if (mb := _lead_month_ar(r)) is not None and mb == (year_m, month_m)
             ]
 
-        rows.sort(key=_lead_sort_ts, reverse=True)
+        rows.sort(key=_lead_sort_ts, reverse=False)
         out = [_to_lead_out(r, norm_prices) for r in rows]
 
     return LeadsListResponse(leads=out)

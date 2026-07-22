@@ -264,7 +264,7 @@ export function LeadsPage() {
   // UI state
   const [statusTab, setStatusTab] = useState('Todos')
   const [search, setSearch] = useState('')
-  const [sort, setSort] = useState<SortConfig>({ field: 'date', dir: 'desc' })
+  const [sort, setSort] = useState<SortConfig>({ field: 'date', dir: 'asc' })
   const [filters, setFilters] = useState<FilterConfig[]>([])
   const [visibleColumns, setVisibleColumns] = useState<Set<string>>(() =>
     new Set(buildColumns([], []).filter(c => c.defaultVisible).map(c => c.key))
@@ -942,8 +942,23 @@ export function LeadsPage() {
         </div>
       </div>
 
+      {syncing && (
+        <div className="mb-3 glass-card p-4">
+          <div className="mb-2 flex items-center gap-2 text-[12px] text-[var(--text)]">
+            <span className="inline-block h-2 w-2 animate-pulse rounded-full bg-[var(--accent)]" />
+            Sincronizando leads desde Calendly…
+          </div>
+          <div className="mb-2 h-2 w-full overflow-hidden rounded-full bg-[var(--bg4)]">
+            <div className="h-full w-full origin-left animate-pulse rounded-full bg-[var(--accent)]/70" />
+          </div>
+          <div className="text-[12px] text-[var(--text3)]">
+            Descargando agendas del mes {month || 'seleccionado'}…
+          </div>
+        </div>
+      )}
+
       {/* ━━ TABLE ━━ */}
-      {loading ? (
+      {loading && !syncing ? (
         <div className="py-12 text-center text-[var(--text3)]">Cargando...</div>
       ) : grouped ? (
         <div className="flex-1 overflow-auto rounded-lg border border-[var(--border)] bg-[var(--bg2)]">
@@ -1306,6 +1321,7 @@ function LeadsTable({
           {columns.map(col => (
             <th key={col.key}
               onClick={() => onToggleSort(col.key)}
+              title={col.title || col.label}
               className={`border-b border-[var(--border2)] px-3 py-2 text-left text-[10px] font-semibold uppercase tracking-wider text-[var(--text3)] hover:text-[var(--text2)] cursor-pointer select-none whitespace-nowrap transition-colors ${
                 stickyName && col.key === 'client_name'
                   ? 'leads-table__sticky-frozen leads-table__sticky-name'
